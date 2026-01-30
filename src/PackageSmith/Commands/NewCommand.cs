@@ -7,6 +7,7 @@ using PackageSmith.Core.AssemblyDefinition;
 using PackageSmith.Core.Dependencies;
 using PackageSmith.Core.Templates;
 using PackageSmith.Core.AI;
+using PackageSmith.UI;
 
 namespace PackageSmith.Commands;
 
@@ -85,7 +86,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
     {
         if (!_configService.ConfigExists())
         {
-            AnsiConsole.MarkupLine("[yellow]No configuration found. Running setup wizard...[/]\n");
+            AnsiConsole.MarkupLine($"[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.IconWarning} No configuration found. Running setup wizard...[/]\n");
             var settingsCmd = new SettingsCommand();
             settingsCmd.Execute(context, new SettingsCommand.Settings());
         }
@@ -96,7 +97,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
         if (!_generator.TryGenerate(in template, in config, out var layout))
         {
-            AnsiConsole.MarkupLine("[red]Failed to generate package layout.[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Failed to generate package layout[/]");
             return 1;
         }
 
@@ -111,7 +112,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         if (settings.DryRun)
         {
             ShowPreview(in template, in layout);
-            AnsiConsole.MarkupLine("\n[yellow]Dry run completed. No files were written.[/]");
+            AnsiConsole.MarkupLine($"\n[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.IconInfo} Dry run completed. No files were written[/]");
             return 0;
         }
 
@@ -119,26 +120,58 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
         if (!settings.SkipConfirmation && !ConfirmCreation())
         {
-            AnsiConsole.MarkupLine("[yellow]Operation cancelled.[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.IconInfo} Operation cancelled[/]");
             return 0;
         }
 
-        if (_writer.TryWrite(in layout))
+        // Use progress bar for file writing
+        var writeSuccess = ProgressManager.ShowProgress("Writing Files", progress =>
+        {
+            var totalFiles = layout.Files.Length + layout.Directories.Length;
+            progress.Task.MaxValue = totalFiles;
+
+            // Create directories
+            foreach (var dir in layout.Directories)
+            {
+                Directory.CreateDirectory(dir.Path);
+                progress.Increment();
+                progress.SetStatus($"Creating {Path.GetFileName(dir.Path)}");
+            }
+
+            // Write files
+            foreach (var file in layout.Files)
+            {
+                var directory = Path.GetDirectoryName(file.Path);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllText(file.Path, file.Content);
+                progress.Increment();
+                progress.SetStatus($"Writing {Path.GetFileName(file.Path)}");
+            }
+
+            return true;
+        });
+
+        if (writeSuccess)
         {
             // Write .package-context file
             WriteContextFile(in template, in config);
 
             // Git init if enabled
-            if (!settings.NoWizard) // Only do git init in interactive mode
+            if (!settings.NoWizard)
             {
                 GitInit(template);
             }
 
-            AnsiConsole.MarkupLine($"\n[green]Package created successfully at:[/] {template.OutputPath}/{template.PackageName}");
+            LayoutManager.PrintFooter();
+            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Package created at:[/] [{StyleManager.PathColor.ToMarkup()}]{template.OutputPath}/{template.PackageName}[/]");
             return 0;
         }
 
-        AnsiConsole.MarkupLine("[red]Failed to write package to disk.[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Failed to write package to disk[/]");
         return 1;
     }
 
@@ -279,23 +312,38 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
     private string PromptTemplateSelection()
     {
-        AnsiConsole.MarkupLine("\n[yellow]Select Package Template[/]\n");
-
         var templates = _templateRegistry.Templates.Values
             .Where(t => t.BuiltIn)
             .OrderBy(t => t.DisplayName)
-            .ToList();
+            .ToDictionary(t => t.Name, t => ($"{StyleManager.IconTemplate} {t.DisplayName}", (string?)t.Description));
 
-        var choice = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("Choose a template:")
-                .PageSize(10)
-                .AddChoices(templates.Select(t => $"{t.DisplayName} - {t.Description}"))
-        );
+        return PromptManager.PromptChoice("Select Template", templates);
+    }
 
-        // Extract template name from selection
-        var selectedTemplate = templates.FirstOrDefault(t => choice.StartsWith(t.DisplayName));
-        return selectedTemplate?.Name ?? "basic";
+    private static string PromptPackageName()
+    {
+        return PromptManager.PromptPackageName();
+    }
+
+    private static PackageModule PromptModules()
+    {
+        var modules = new Dictionary<PackageModule, (string Label, string? Description)>
+        {
+            { PackageModule.Runtime, ($"{StyleManager.IconCode} Runtime", "Runtime code and components") },
+            { PackageModule.Editor, ($"{StyleManager.IconConfig} Editor", "Editor-only tools and utilities") },
+            { PackageModule.Tests, ($"{StyleManager.IconTest} Tests", "Test assemblies and test runners") },
+            { PackageModule.Samples, ($"{StyleManager.IconFolder} Samples", "Example scenes and usage samples") }
+        };
+
+        var selected = PromptManager.PromptMultipleChoices("Select Modules", modules);
+
+        var result = PackageModule.None;
+        foreach (var module in selected)
+        {
+            result |= module;
+        }
+
+        return result;
     }
 
     private static TemplateType ParseTemplate(string? template)
@@ -344,45 +392,6 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         return results.ToArray();
     }
 
-    private static string PromptPackageName()
-    {
-        AnsiConsole.MarkupLine("\n[cyan]Package Name (Reverse Domain Notation)[/]");
-        AnsiConsole.MarkupLine("[dim]Examples: com.company.utilities, io.gamestudio.networking[/]");
-
-        while (true)
-        {
-            var input = AnsiConsole.Ask<string>("\n[white]Package name:[/] ").Trim();
-
-            if (PackageNameValidator.TryValidate(input, out var error))
-            {
-                return input;
-            }
-
-            AnsiConsole.MarkupLine($"[red]{error}[/]");
-        }
-    }
-
-    private static PackageModule PromptModules()
-    {
-        AnsiConsole.MarkupLine("\n[cyan]Select modules to include[/]");
-
-        var selected = AnsiConsole.Prompt(
-            new MultiSelectionPrompt<PackageModule>()
-                .Title("[white]Which modules should be included?[/]")
-                .NotRequired()
-                .AddChoices(PackageModuleExtensions.AllValues)
-                .UseConverter(m => m.ToFolderName())
-        );
-
-        var result = PackageModule.None;
-        foreach (var module in selected)
-        {
-            result |= module;
-        }
-
-        return result;
-    }
-
     private static PackageModule ParseModules(string? modules)
     {
         if (string.IsNullOrWhiteSpace(modules)) return PackageModule.None;
@@ -414,25 +423,27 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
     private static void ShowPreview(in PackageTemplate template, in PackageLayout layout)
     {
-        AnsiConsole.MarkupLine("\n[bold cyan]Package Structure Preview[/]\n");
+        LayoutManager.PrintSection("Package Structure Preview");
 
         var packageName = template.PackageName;
         var outputPath = template.OutputPath;
         var packagePath = Path.Combine(outputPath, packageName);
 
-        var root = new Tree($"[yellow]{packageName}/[/]");
+        var root = new Tree($"[{StyleManager.CommandColor.ToMarkup()}]{StyleManager.IconPackage} {packageName}/[/]");
 
         // Add directories
         foreach (var dir in layout.Directories.Skip(1))
         {
             var relativePath = GetRelativePath(dir.Path, packagePath);
-            var node = root.AddNode($"[blue]{relativePath}/[/]");
+            var node = root.AddNode($"[{StyleManager.PathColor.ToMarkup()}]{StyleManager.IconFolder} {relativePath}/[/]");
 
             // Add files in this directory
             var filesInDir = layout.Files.Where(f => Path.GetDirectoryName(f.Path) == dir.Path);
             foreach (var file in filesInDir)
             {
-                node.AddNode($"[green]{Path.GetFileName(file.Path)}[/]");
+                var fileName = Path.GetFileName(file.Path);
+                var icon = GetFileIcon(fileName);
+                node.AddNode($"[{StyleManager.InfoColor.ToMarkup()}]{icon} {fileName}[/]");
             }
         }
 
@@ -445,10 +456,25 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
         foreach (var file in rootFiles)
         {
-            root.AddNode($"[green]{Path.GetFileName(file.Path)}[/]");
+            var fileName = Path.GetFileName(file.Path);
+            var icon = GetFileIcon(fileName);
+            root.AddNode($"[{StyleManager.InfoColor.ToMarkup()}]{icon} {fileName}[/]");
         }
 
         AnsiConsole.Write(root);
+        AnsiConsole.WriteLine();
+    }
+
+    private static string GetFileIcon(string fileName)
+    {
+        return Path.GetExtension(fileName) switch
+        {
+            ".asmdef" => StyleManager.IconCode,
+            ".cs" => StyleManager.IconCode,
+            ".md" => StyleManager.IconInfo,
+            ".json" => StyleManager.IconConfig,
+            _ => StyleManager.IconDependency
+        };
     }
 
     private static string GetRelativePath(string fullPath, string basePath)
@@ -462,6 +488,6 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
     private static bool ConfirmCreation()
     {
-        return AnsiConsole.Confirm("\n[white]Create this package?[/]");
+        return PromptManager.PromptConfirmation("Create this package?", defaultValue: true);
     }
 }

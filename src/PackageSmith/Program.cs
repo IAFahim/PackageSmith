@@ -1,6 +1,8 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using PackageSmith.Commands;
+using PackageSmith.UI;
+using System.Diagnostics;
 
 namespace PackageSmith;
 
@@ -8,8 +10,22 @@ static class Program
 {
     static int Main(string[] args)
     {
+        // Global exception handler
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+        {
+            if (e.ExceptionObject is Exception ex)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                AnsiConsole.MarkupLine($"\n[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} An unexpected error occurred[/]");
+                AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}]Report issues at: https://github.com/your-repo/pksmith/issues[/]");
+                Environment.Exit(1);
+            }
+        };
+
         ShowBanner();
-        
+
+        var stopwatch = Stopwatch.StartNew();
         var app = new CommandApp();
 
         app.Configure(config =>
@@ -75,21 +91,55 @@ static class Program
             config.AddCommand<UpdateCommand>("update")
                 .WithDescription("Update pksmith to latest version")
                 .WithExample("update");
+
+            // Set up command interceptor for timing
+            config.SetInterceptor(new CommandInterceptor());
         });
 
-        return app.Run(args);
+        var result = app.Run(args);
+        stopwatch.Stop();
+
+        if (result == 0 && stopwatch.ElapsedMilliseconds > 500)
+        {
+            AnsiConsole.MarkupLine($"\n[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.IconInfo} Done in {FormatDuration(stopwatch.Elapsed)}[/]");
+        }
+
+        return result;
     }
 
     private static void ShowBanner()
     {
         if (Console.IsOutputRedirected) return;
 
-        AnsiConsole.Write(
-            new FigletText("PackageSmith")
-                .Color(Color.Cyan1)
-        );
-        
-        AnsiConsole.MarkupLine("[dim]Build Unity packages the right way, every time.[/]");
-        AnsiConsole.MarkupLine("[dim]Version 2.0.5[/]\n");
+        LayoutManager.PrintHeader();
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalSeconds < 1)
+            return $"{duration.TotalMilliseconds:F0}ms";
+        if (duration.TotalMinutes < 1)
+            return $"{duration.TotalSeconds:F1}s";
+        return $"{duration.TotalMinutes:F1}m";
+    }
+}
+
+internal class CommandInterceptor : ICommandInterceptor
+{
+    public void Intercept(CommandContext context, CommandSettings settings, IRemainingArguments args)
+    {
+        // Check for updates (non-blocking)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // TODO: Implement version check
+                await Task.CompletedTask;
+            }
+            catch
+            {
+                // Ignore update check errors
+            }
+        });
     }
 }
