@@ -237,7 +237,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
         // Apply template defaults if selected
         var ecsPreset = settings.EnableEcs ? EcsPreset.Full : EcsPreset.None;
-        var subAssemblies = settings.EnableSubAssemblies ? SubAssemblyType.Standard : SubAssemblyType.None;
+        var subAssemblies = settings.EnableSubAssemblies ? SubAssemblyType.All : SubAssemblyType.None;
 
         if (selectedTemplateName != null)
         {
@@ -252,7 +252,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
                 else if (selectedTemplateName == "ecs-modular")
                 {
                     ecsPreset = EcsPreset.Full;
-                    subAssemblies = SubAssemblyType.Standard;
+                    subAssemblies = SubAssemblyType.All;
                 }
             }
         }
@@ -406,7 +406,10 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         if (string.IsNullOrWhiteSpace(packageName)) return "New Package";
 
         var parts = packageName.Split('.');
-        return parts[^1];
+        var lastSegment = parts[^1];
+
+        // Convert to PascalCase
+        return char.ToUpper(lastSegment[0]) + (lastSegment.Length > 1 ? lastSegment.Substring(1) : string.Empty);
     }
 
     private static void ShowPreview(in PackageTemplate template, in PackageLayout layout)
