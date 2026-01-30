@@ -22,7 +22,7 @@ public readonly struct AsmDefFile
         string[]? defineConstraints = null,
         bool allowUnsafeCode = false,
         bool overrideReferences = false,
-        bool autoReferenced = true,
+        bool autoReferenced = false,
         bool noEngineReferences = false,
         string[]? versionDefines = null)
     {

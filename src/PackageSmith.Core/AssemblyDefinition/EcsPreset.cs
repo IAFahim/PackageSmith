@@ -66,11 +66,7 @@ public readonly struct EcsPreset
 
     public readonly string[] GetDefineConstraints()
     {
-        if (!EnableBurst && !EnableEntities) return Array.Empty<string>();
-
-        var defines = new List<string>();
-        if (EnableBurst) defines.Add("UNITY_BURST_AOT");
-        return defines.ToArray();
+        return Array.Empty<string>();
     }
 
     public readonly bool IsEnabled => EnableEntities || EnableBurst || EnableCollections || EnableMathematics || EnableJobs || EnablePhysics;
