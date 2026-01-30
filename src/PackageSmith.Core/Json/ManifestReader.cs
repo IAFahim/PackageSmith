@@ -29,8 +29,9 @@ public static class ManifestReader
             manifest = parsed.Value;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[ERROR] Failed to read manifest: {ex.Message}");
             return false;
         }
     }
@@ -46,8 +47,9 @@ public static class ManifestReader
             File.WriteAllText(manifestPath, json);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[ERROR] Failed to write manifest: {ex.Message}");
             return false;
         }
     }

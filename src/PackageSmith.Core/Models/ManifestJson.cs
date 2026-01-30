@@ -8,7 +8,23 @@ public struct UnityManifest
     public Dictionary<string, string> Dependencies;
 
     [JsonPropertyName("scopedRegistries")]
-    public ScopedRegistry[] ScopedRegistries;
+    public ScopedRegistry[]? ScopedRegistries;
+
+    // Preserve additional fields to prevent data loss
+    [JsonPropertyName("testables")]
+    public string[]? Testables;
+
+    [JsonPropertyName("registry")]
+    public string? Registry;
+
+    [JsonPropertyName("lock")]
+    public Dictionary<string, object>? Lock;
+
+    [JsonPropertyName("resolutionStrategy")]
+    public string? ResolutionStrategy;
+
+    [JsonExtensionData]
+    public Dictionary<string, object>? ExtensionData;
 
     public readonly override string ToString() => $"[Manifest] {Dependencies.Count:D} dependencies";
 }

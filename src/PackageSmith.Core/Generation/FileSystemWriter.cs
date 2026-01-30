@@ -6,6 +6,7 @@ public sealed class FileSystemWriter : IFileSystemWriter
     {
         if (!layout.IsValid)
         {
+            Console.WriteLine("[ERROR] Invalid package layout");
             return false;
         }
 
@@ -34,8 +35,9 @@ public sealed class FileSystemWriter : IFileSystemWriter
 
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[ERROR] Failed to write package files: {ex.Message}");
             // In production, you might want to clean up partial writes here
             return false;
         }

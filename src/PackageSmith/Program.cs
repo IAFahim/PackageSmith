@@ -33,6 +33,19 @@ static class Program
                 .WithExample("install", "../MyPackage")
                 .WithExample("install", ".");
 
+            config.AddCommand<TransferCommand>("transfer")
+                .WithDescription("Transfer packages between Library and Packages folders")
+                .WithExample("transfer", "com.company.package")
+                .WithExample("transfer", "com.company.package --to-packages")
+                .WithExample("transfer", "com.company.package --to-library");
+
+            config.AddCommand<GitCommand>("git")
+                .WithDescription("Manage git repositories for packages")
+                .WithExample("git", "link com.company.package https://github.com/user/repo.git")
+                .WithExample("git", "clone https://github.com/user/com.company.package.git")
+                .WithExample("git", "status com.company.package")
+                .WithExample("git", "push com.company.package");
+
             config.AddCommand<ListCommand>("list")
                 .WithDescription("List installed packages in Unity project")
                 .WithExample("list");
@@ -46,6 +59,13 @@ static class Program
                 .WithExample("validate")
                 .WithExample("validate", ".")
                 .WithExample("validate", "/path/to/package --verbose");
+
+            config.AddCommand<CiCommand>("ci")
+                .WithDescription("Generate CI/CD workflows for package testing")
+                .WithExample("ci", "generate")
+                .WithExample("ci", "generate --unity-versions 2022.3,2023.2")
+                .WithExample("ci", "generate --platforms StandaloneWindows64,Android,WebGL")
+                .WithExample("ci", "add-secrets");
 
             config.AddCommand<SettingsCommand>("settings")
                 .WithDescription("Configure global package settings")
