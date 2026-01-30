@@ -100,7 +100,7 @@ public static class MarkdownTemplates
 
     public static string RuntimeAsmDef(string packageName)
     {
-        var asmdefName = packageName.Replace('.', '_');
+        var asmdefName = packageName;
         return $$"""
         {
             "name": "{{asmdefName}}",
@@ -120,8 +120,8 @@ public static class MarkdownTemplates
 
     public static string EditorAsmDef(string packageName)
     {
-        var asmdefName = $"{packageName.Replace('.', '_')}.Editor";
-        var runtimeAsmdef = packageName.Replace('.', '_');
+        var asmdefName = $"{packageName}.Editor";
+        var runtimeAsmdef = packageName;
         return $$"""
         {
             "name": "{{asmdefName}}",
@@ -147,8 +147,8 @@ public static class MarkdownTemplates
 
     public static string TestsAsmDef(string packageName)
     {
-        var asmdefName = $"{packageName.Replace('.', '_')}.Tests";
-        var runtimeAsmdef = packageName.Replace('.', '_');
+        var asmdefName = $"{packageName}.Tests";
+        var runtimeAsmdef = packageName;
         return $$"""
         {
             "name": "{{asmdefName}}",

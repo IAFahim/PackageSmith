@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using PackageSmith.Core.Dependencies;
 
 namespace PackageSmith.Core.Generation;
@@ -35,48 +37,83 @@ public readonly struct PackageManifest
 
     public readonly string ToJson()
     {
-        var keywordsArray = Keywords.Length > 0
-            ? $"\n  \"keywords\": [{string.Join(", ", Keywords.Select(k => $"\"{k}\""))}],"
-            : "";
-
-        var deps = Dependencies.Length > 0
-            ? GenerateDependenciesBlock()
-            : "";
-
-        var nugetDep = Dependencies.Any(d => d.Type.HasFlag(DependencyType.NuGet))
-            ? $"\n  \"dependencies\": {{\n    \"com.unity.nuget.get\": \"3.1.0\"\n  }},"
-            : "";
-
-        return $$"""
+        // Use JsonSerializer to ensure proper escaping of special characters
+        // This prevents JSON injection when user input contains quotes or special chars
+        var manifest = new PackageJsonDto
         {
-          "name": "{{Name}}",
-          "version": "{{Version}}",
-          "displayName": "{{DisplayName}}",
-          "description": "{{Description}}",
-          "unity": "{{Unity}}",
-          "author": "{{Author}}",{{keywordsArray}}{{nugetDep}}
-          "type": "tool"{{deps}}
-        }
-        """;
-    }
+            Name = Name,
+            Version = Version,
+            DisplayName = DisplayName,
+            Description = Description,
+            Unity = Unity,
+            Author = Author,
+            Keywords = Keywords.Length > 0 ? Keywords : null,
+            Type = "tool"
+        };
 
-    private readonly string GenerateDependenciesBlock()
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine(",\n  \"dependencies\": {");
-
-        for (int i = 0; i < Dependencies.Length; i++)
+        // Add dependencies if any
+        if (Dependencies.Length > 0)
         {
-            var dep = Dependencies[i];
-            sb.Append($"    {dep.ToPackageJsonDependency()}");
-
-            if (i < Dependencies.Length - 1)
+            manifest.Dependencies = new Dictionary<string, string>();
+            foreach (var dep in Dependencies)
             {
-                sb.AppendLine();
+                // Parse dependency format: "package.name": "version"
+                var depJson = dep.ToPackageJsonDependency();
+                var colonIndex = depJson.IndexOf(':');
+                if (colonIndex > 0)
+                {
+                    var packageName = depJson.Substring(0, colonIndex).Trim().Trim('"');
+                    var version = depJson.Substring(colonIndex + 1).Trim().Trim('"', ',', ' ');
+                    manifest.Dependencies[packageName] = version;
+                }
             }
         }
 
-        sb.Append("\n  }");
-        return sb.ToString();
+        // Add NuGet dependency if needed
+        if (Dependencies.Any(d => d.Type.HasFlag(DependencyType.NuGet)))
+        {
+            manifest.Dependencies ??= new Dictionary<string, string>();
+            manifest.Dependencies["com.unity.nuget.get"] = "3.1.0";
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        return JsonSerializer.Serialize(manifest, options);
+    }
+
+    // DTO for JSON serialization with proper escaping
+    private class PackageJsonDto
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("version")]
+        public string Version { get; set; } = "";
+
+        [JsonPropertyName("displayName")]
+        public string DisplayName { get; set; } = "";
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = "";
+
+        [JsonPropertyName("unity")]
+        public string Unity { get; set; } = "";
+
+        [JsonPropertyName("author")]
+        public string Author { get; set; } = "";
+
+        [JsonPropertyName("keywords")]
+        public string[]? Keywords { get; set; }
+
+        [JsonPropertyName("dependencies")]
+        public Dictionary<string, string>? Dependencies { get; set; }
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "tool";
     }
 }

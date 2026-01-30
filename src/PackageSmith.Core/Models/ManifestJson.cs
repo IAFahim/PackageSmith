@@ -5,38 +5,38 @@ namespace PackageSmith.Core.Models;
 public struct UnityManifest
 {
     [JsonPropertyName("dependencies")]
-    public Dictionary<string, string> Dependencies;
+    public Dictionary<string, string>? Dependencies { get; set; }
 
     [JsonPropertyName("scopedRegistries")]
-    public ScopedRegistry[]? ScopedRegistries;
+    public ScopedRegistry[]? ScopedRegistries { get; set; }
 
     // Preserve additional fields to prevent data loss
     [JsonPropertyName("testables")]
-    public string[]? Testables;
+    public string[]? Testables { get; set; }
 
     [JsonPropertyName("registry")]
-    public string? Registry;
+    public string? Registry { get; set; }
 
     [JsonPropertyName("lock")]
-    public Dictionary<string, object>? Lock;
+    public Dictionary<string, object>? Lock { get; set; }
 
     [JsonPropertyName("resolutionStrategy")]
-    public string? ResolutionStrategy;
+    public string? ResolutionStrategy { get; set; }
 
     [JsonExtensionData]
-    public Dictionary<string, object>? ExtensionData;
+    public Dictionary<string, object>? ExtensionData { get; set; }
 
-    public readonly override string ToString() => $"[Manifest] {Dependencies.Count:D} dependencies";
+    public readonly override string ToString() => $"[Manifest] {Dependencies?.Count ?? 0:D} dependencies";
 }
 
 public struct ScopedRegistry
 {
     [JsonPropertyName("name")]
-    public string Name;
+    public string Name { get; set; }
 
     [JsonPropertyName("url")]
-    public string Url;
+    public string Url { get; set; }
 
     [JsonPropertyName("scopes")]
-    public string[] Scopes;
+    public string[] Scopes { get; set; }
 }

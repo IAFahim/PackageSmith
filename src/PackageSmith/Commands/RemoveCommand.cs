@@ -44,7 +44,7 @@ public class RemoveCommand : Command<RemoveCommand.Settings>
             return 1;
         }
 
-        if (!manifest.Dependencies.ContainsKey(settings.PackageName))
+        if (manifest.Dependencies == null || !manifest.Dependencies.ContainsKey(settings.PackageName))
         {
             AnsiConsole.MarkupLine($"[yellow]Warning:[/] Package '{settings.PackageName}' not found in manifest");
             return 1;

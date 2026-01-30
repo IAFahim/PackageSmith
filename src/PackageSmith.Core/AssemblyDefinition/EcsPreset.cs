@@ -11,6 +11,7 @@ public readonly struct EcsPreset
     public readonly bool EnablePhysics;
 
     public static EcsPreset Full => new(true, true, true, true, true, false);
+    public static EcsPreset Simple => new(true, true, false, false, false, false);
     public static EcsPreset None => new(false, false, false, false, false, false);
 
     public EcsPreset(

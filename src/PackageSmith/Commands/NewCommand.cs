@@ -70,12 +70,15 @@ public sealed class NewCommand : Command<NewCommand.Settings>
     private readonly IConfigService _configService;
     private readonly IPackageGenerator _generator;
     private readonly IFileSystemWriter _writer;
+    private readonly TemplateRegistry _templateRegistry;
 
     public NewCommand()
     {
         _configService = new ConfigService();
         _generator = new PackageGenerator();
         _writer = new FileSystemWriter();
+        _templateRegistry = new TemplateRegistry();
+        _templateRegistry.LoadTemplates();
     }
 
     public override int Execute(CommandContext context, Settings settings)
@@ -210,8 +213,15 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         """;
     }
 
-    private static PackageTemplate CreateTemplate(in Settings settings, in PackageSmithConfig config)
+    private PackageTemplate CreateTemplate(in Settings settings, in PackageSmithConfig config)
     {
+        // Step 1: Select template type
+        string? selectedTemplateName = null;
+        if (!settings.NoWizard)
+        {
+            selectedTemplateName = PromptTemplateSelection();
+        }
+
         var name = settings.PackageName;
 
         if (string.IsNullOrWhiteSpace(name) || !settings.NoWizard)
@@ -225,8 +235,27 @@ public sealed class NewCommand : Command<NewCommand.Settings>
             modules = PromptModules();
         }
 
+        // Apply template defaults if selected
         var ecsPreset = settings.EnableEcs ? EcsPreset.Full : EcsPreset.None;
         var subAssemblies = settings.EnableSubAssemblies ? SubAssemblyType.Standard : SubAssemblyType.None;
+
+        if (selectedTemplateName != null)
+        {
+            var templateMeta = _templateRegistry.GetTemplate(selectedTemplateName);
+            if (templateMeta != null)
+            {
+                // Apply template settings
+                if (selectedTemplateName == "ecs-simple")
+                {
+                    ecsPreset = EcsPreset.Simple;
+                }
+                else if (selectedTemplateName == "ecs-modular")
+                {
+                    ecsPreset = EcsPreset.Full;
+                    subAssemblies = SubAssemblyType.Standard;
+                }
+            }
+        }
 
         var dependencies = ParseDependencies(settings.Dependencies);
         var template = ParseTemplate(settings.Template);
@@ -242,10 +271,31 @@ public sealed class NewCommand : Command<NewCommand.Settings>
             UnityVersion = config.DefaultUnityVersion,
             EcsPreset = ecsPreset,
             SubAssemblies = subAssemblies,
-            EnableSubAssemblies = settings.EnableSubAssemblies,
+            EnableSubAssemblies = subAssemblies != SubAssemblyType.None,
             Dependencies = dependencies,
             SelectedTemplate = template
         };
+    }
+
+    private string PromptTemplateSelection()
+    {
+        AnsiConsole.MarkupLine("\n[yellow]Select Package Template[/]\n");
+
+        var templates = _templateRegistry.Templates.Values
+            .Where(t => t.BuiltIn)
+            .OrderBy(t => t.DisplayName)
+            .ToList();
+
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Choose a template:")
+                .PageSize(10)
+                .AddChoices(templates.Select(t => $"{t.DisplayName} - {t.Description}"))
+        );
+
+        // Extract template name from selection
+        var selectedTemplate = templates.FirstOrDefault(t => choice.StartsWith(t.DisplayName));
+        return selectedTemplate?.Name ?? "basic";
     }
 
     private static TemplateType ParseTemplate(string? template)

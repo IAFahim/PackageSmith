@@ -16,7 +16,8 @@ public readonly struct SubAssemblyDefinition
 
     public static SubAssemblyDefinition[] GetStandardSubAssemblies(string packageName)
     {
-        var baseName = packageName.Replace('.', '_');
+        // Use dots for assembly names (Unity convention)
+        var baseName = packageName;
         var prefix = $"{baseName}.";
 
         return new[]

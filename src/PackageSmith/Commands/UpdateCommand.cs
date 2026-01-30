@@ -30,11 +30,11 @@ public class UpdateCommand : Command<UpdateCommand.Settings>
         if (repoRoot == null)
         {
             AnsiConsole.MarkupLine("[yellow]Warning:[/] Not running from git repository");
-            AnsiConsole.MarkupLine("[dim]Release-based updates not implemented yet[/dim]");
+            AnsiConsole.MarkupLine("[dim]Release-based updates not implemented yet[/]");
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[dim]Repo root:[/] {repoRoot}");
+        AnsiConsole.MarkupLine($"[dim]Repo root:[/] [blue]{repoRoot.EscapeMarkup()}[/]");
 
         AnsiConsole.MarkupLine("[cyan]Fetching[/] latest changes...");
         if (!RunGitCommand(repoRoot, "git fetch origin"))
@@ -44,7 +44,7 @@ public class UpdateCommand : Command<UpdateCommand.Settings>
         }
 
         var currentBranch = GetGitBranch(repoRoot);
-        AnsiConsole.MarkupLine($"[dim]Current branch:[/] {currentBranch}");
+        AnsiConsole.MarkupLine($"[dim]Current branch:[/] [blue]{currentBranch.EscapeMarkup()}[/]");
 
         AnsiConsole.MarkupLine("[cyan]Pulling[/] latest changes...");
         if (!RunGitCommand(repoRoot, "git pull origin " + currentBranch))
@@ -62,13 +62,13 @@ public class UpdateCommand : Command<UpdateCommand.Settings>
 
         if (!File.Exists(installScript))
         {
-            AnsiConsole.MarkupLine($"[yellow]Warning:[/] Install script not found: {installScript}");
-            AnsiConsole.MarkupLine("[dim]Please run install script manually[/dim]");
+            AnsiConsole.MarkupLine($"[yellow]Warning:[/] Install script not found: [blue]{installScript.EscapeMarkup()}[/]");
+            AnsiConsole.MarkupLine("[dim]Please run install script manually[/]");
             return 0;
         }
 
         AnsiConsole.MarkupLine($"\n[green]Update complete![/]");
-        AnsiConsole.MarkupLine($"[dim]Run:[/] {installScript}\n");
+        AnsiConsole.MarkupLine($"[dim]Run:[/] [blue]{installScript.EscapeMarkup()}[/]\n");
 
         return 0;
     }

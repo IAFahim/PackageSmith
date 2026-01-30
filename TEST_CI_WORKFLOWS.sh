@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Get script directory for relative paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "=== PackageSmith CI Workflow Generation Tests ==="
 echo ""
 
@@ -22,14 +25,14 @@ EOF
 cd "$TEST_DIR"
 
 echo "TEST 1: Generate simple workflow"
-dotnet run --project /mnt/5f79a6c2-0764-4cd7-88b4-12dbd1b39909/packagesmith/src/PackageSmith -c Release -- ci generate --simple --force > /dev/null 2>&1
+dotnet run --project "$SCRIPT_DIR/src/PackageSmith" -c Release -- ci generate --simple --force > /dev/null 2>&1
 [ -f ".github/workflows/test.yml" ] && echo "✓ test.yml created" || echo "✗ test.yml missing"
 [ ! -f ".github/workflows/build.yml" ] && echo "✓ build.yml not created (simple mode)" || echo "✗ build.yml exists (shouldn't)"
 echo ""
 
 echo "TEST 2: Generate full workflows"
 rm -rf .github
-dotnet run --project /mnt/5f79a6c2-0764-4cd7-88b4-12dbd1b39909/packagesmith/src/PackageSmith -c Release -- ci generate --force > /dev/null 2>&1
+dotnet run --project "$SCRIPT_DIR/src/PackageSmith" -c Release -- ci generate --force > /dev/null 2>&1
 [ -f ".github/workflows/test.yml" ] && echo "✓ test.yml created" || echo "✗ test.yml missing"
 [ -f ".github/workflows/build.yml" ] && echo "✓ build.yml created" || echo "✗ build.yml missing"
 [ -f ".github/workflows/activation.yml" ] && echo "✓ activation.yml created" || echo "✗ activation.yml missing"
@@ -56,14 +59,14 @@ echo ""
 
 echo "TEST 6: Test custom Unity versions"
 rm -rf .github
-dotnet run --project /mnt/5f79a6c2-0764-4cd7-88b4-12dbd1b39909/packagesmith/src/PackageSmith -c Release -- ci generate --unity-versions 2021.3,2023.2 --force > /dev/null 2>&1
+dotnet run --project "$SCRIPT_DIR/src/PackageSmith" -c Release -- ci generate --unity-versions 2021.3,2023.2 --force > /dev/null 2>&1
 grep -q "2021.3" .github/workflows/test.yml && echo "✓ Has 2021.3" || echo "✗ Missing 2021.3"
 grep -q "2023.2" .github/workflows/test.yml && echo "✓ Has 2023.2" || echo "✗ Missing 2023.2"
 ! grep -q "2022.3" .github/workflows/test.yml && echo "✓ Doesn't have 2022.3" || echo "✗ Has unwanted 2022.3"
 echo ""
 
 echo "TEST 7: Test ci add-secrets command"
-OUTPUT=$(dotnet run --project /mnt/5f79a6c2-0764-4cd7-88b4-12dbd1b39909/packagesmith/src/PackageSmith -c Release -- ci add-secrets 2>&1)
+OUTPUT=$(dotnet run --project "$SCRIPT_DIR/src/PackageSmith" -c Release -- ci add-secrets 2>&1)
 echo "$OUTPUT" | grep -q "UNITY_LICENSE" && echo "✓ Shows UNITY_LICENSE" || echo "✗ Missing UNITY_LICENSE"
 echo "$OUTPUT" | grep -q "UNITY_EMAIL" && echo "✓ Shows UNITY_EMAIL" || echo "✗ Missing UNITY_EMAIL"
 echo "$OUTPUT" | grep -q "UNITY_PASSWORD" && echo "✓ Shows UNITY_PASSWORD" || echo "✗ Missing UNITY_PASSWORD"

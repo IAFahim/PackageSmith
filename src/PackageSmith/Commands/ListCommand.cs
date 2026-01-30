@@ -35,6 +35,12 @@ public class ListCommand : Command<ListCommand.Settings>
             return 1;
         }
 
+        if (manifest.Dependencies == null || manifest.Dependencies.Count == 0)
+        {
+            AnsiConsole.MarkupLine($"\n[yellow]No packages found in:[/] {unityProjectPath}\n");
+            return 0;
+        }
+
         var table = new Table();
         table.Border(TableBorder.Rounded);
         table.AddColumn("[yellow]Package[/]");

@@ -138,7 +138,7 @@ public sealed class PackageGenerator : IPackageGenerator
         {
             var asmdef = AsmDefTemplate.Runtime(packageName, in ecsPreset);
             files.Add(new VirtualFile(
-                Path.Combine(basePath, "Runtime", $"{packageName.Replace('.', '_')}.asmdef"),
+                Path.Combine(basePath, "Runtime", $"{packageName}.asmdef"),
                 asmdef.ToJson()
             ));
         }
@@ -155,7 +155,7 @@ public sealed class PackageGenerator : IPackageGenerator
 
             var asmdef = AsmDefTemplate.Editor(packageName, runtimeRefs);
             files.Add(new VirtualFile(
-                Path.Combine(basePath, "Editor", $"{packageName.Replace('.', '_')}.Editor.asmdef"),
+                Path.Combine(basePath, "Editor", $"{packageName}.Editor.asmdef"),
                 asmdef.ToJson()
             ));
         }
@@ -172,7 +172,7 @@ public sealed class PackageGenerator : IPackageGenerator
 
             var asmdef = AsmDefTemplate.Tests(packageName, runtimeRefs);
             files.Add(new VirtualFile(
-                Path.Combine(basePath, "Tests", $"{packageName.Replace('.', '_')}.Tests.asmdef"),
+                Path.Combine(basePath, "Tests", $"{packageName}.Tests.asmdef"),
                 asmdef.ToJson()
             ));
 

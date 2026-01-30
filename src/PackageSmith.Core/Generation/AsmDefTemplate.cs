@@ -7,7 +7,8 @@ public static class AsmDefTemplate
 {
     public static AsmDefFile Runtime(string packageName, in EcsPreset ecsPreset)
     {
-        var asmdefName = packageName.Replace('.', '_');
+        // Use dots for assembly names (Unity convention)
+        var asmdefName = packageName;
         var refs = new List<AsmDefReference>();
 
         if (ecsPreset.IsEnabled)
@@ -25,10 +26,11 @@ public static class AsmDefTemplate
 
     public static AsmDefFile Editor(string packageName, string[] runtimeReferences)
     {
-        var asmdefName = $"{packageName.Replace('.', '_')}.Editor";
+        // Use dots for assembly names (Unity convention)
+        var asmdefName = $"{packageName}.Editor";
         var refs = new List<AsmDefReference>
         {
-            AsmDefReference.Custom(packageName.Replace('.', '_'))
+            AsmDefReference.Custom(packageName)
         };
 
         foreach (var refName in runtimeReferences)
@@ -46,12 +48,13 @@ public static class AsmDefTemplate
 
     public static AsmDefFile Tests(string packageName, string[] runtimeReferences)
     {
-        var asmdefName = $"{packageName.Replace('.', '_')}.Tests";
+        // Use dots for assembly names (Unity convention)
+        var asmdefName = $"{packageName}.Tests";
         var refs = new List<AsmDefReference>
         {
             AsmDefReference.Unity("UnityEngine.TestRunner"),
             AsmDefReference.Unity("UnityEditor.TestRunner"),
-            AsmDefReference.Custom(packageName.Replace('.', '_'))
+            AsmDefReference.Custom(packageName)
         };
 
         foreach (var refName in runtimeReferences)

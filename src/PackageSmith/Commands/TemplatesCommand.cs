@@ -199,11 +199,16 @@ public class TemplatesCommand : Command<TemplatesCommand.Settings>
 
     private int ShowUsage()
     {
-        AnsiConsole.MarkupLine("[red]Invalid action[/]");
-        AnsiConsole.MarkupLine("[yellow]Usage:[/]");
-        AnsiConsole.MarkupLine("  pksmith templates list [--tag <TAG>] [--search <TERM>]");
-        AnsiConsole.MarkupLine("  pksmith templates info <template-name>");
-        AnsiConsole.MarkupLine("  pksmith templates preview <template-name>");
+        AnsiConsole.MarkupLine("[yellow]Invalid action[/]");
+        AnsiConsole.MarkupLine("[dim]Usage:[/]");
+        AnsiConsole.MarkupLine("  [cyan]pksmith templates list[/] [dim]\\[--tag TAG] \\[--search TERM][/]");
+        AnsiConsole.MarkupLine("  [cyan]pksmith templates info <template-name>[/]");
+        AnsiConsole.MarkupLine("  [cyan]pksmith templates preview <template-name>[/]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[dim]Examples:[/]");
+        AnsiConsole.MarkupLine("  pksmith templates list --tag ecs");
+        AnsiConsole.MarkupLine("  pksmith templates info ecs-modular");
+        AnsiConsole.MarkupLine("  pksmith templates preview basic");
         return 1;
     }
 }

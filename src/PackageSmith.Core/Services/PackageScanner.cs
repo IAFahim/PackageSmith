@@ -19,8 +19,10 @@ public static class PackageScanner
         if (!Directory.Exists(directory)) return false;
 
         var path = directory.TrimEnd('/', '\\');
+        var maxDepth = 20; // Prevent scanning entire filesystem
+        var currentDepth = 0;
 
-        while (true)
+        while (currentDepth < maxDepth)
         {
             var testPath = Path.Combine(path, "package.json");
             if (File.Exists(testPath))
@@ -33,7 +35,10 @@ public static class PackageScanner
             if (parent == null) return false;
 
             path = parent.FullName;
+            currentDepth++;
         }
+
+        return false; // Max depth reached
     }
 
     public static bool TryScanPackage(string path, out UnityPackage package)
@@ -53,8 +58,9 @@ public static class PackageScanner
             package = parsed.Value;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[ERROR] Failed to parse package.json: {ex.Message}");
             return false;
         }
     }

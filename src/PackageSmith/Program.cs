@@ -90,6 +90,6 @@ static class Program
         );
         
         AnsiConsole.MarkupLine("[dim]Build Unity packages the right way, every time.[/]");
-        AnsiConsole.MarkupLine("[dim]Version 2.0.0[/]\n");
+        AnsiConsole.MarkupLine("[dim]Version 2.0.5[/]\n");
     }
 }

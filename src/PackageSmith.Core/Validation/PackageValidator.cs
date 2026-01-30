@@ -153,6 +153,8 @@ public sealed class PackageValidator
                 foreach (var reference in references.EnumerateArray())
                 {
                     var refName = reference.GetString();
+                    if (string.IsNullOrEmpty(refName)) continue;
+                    
                     if (refName.StartsWith("Unity.") || refName.StartsWith("UnityEngine.") || refName.StartsWith("UnityEditor."))
                     {
                         continue; // Unity references are always valid

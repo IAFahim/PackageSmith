@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using PackageSmith.Core.Configuration;
@@ -59,7 +60,16 @@ public sealed class SettingsCommand : Command<SettingsCommand.Settings>
 
         AnsiConsole.MarkupLine("\n[green][[Configuration Saved]][/]");
         AnsiConsole.MarkupLine($"Location: [link]{_configService.GetConfigPath()}[/]");
-        AnsiConsole.MarkupLine(config.ToDisplayString());
+        
+        // Reload config to display with correct timestamp
+        if (_configService.TryLoadConfig(out var savedConfig))
+        {
+            AnsiConsole.MarkupLine(savedConfig.ToDisplayString());
+        }
+        else
+        {
+            AnsiConsole.MarkupLine(config.ToDisplayString());
+        }
 
         return 0;
     }
@@ -79,9 +89,15 @@ public sealed class SettingsCommand : Command<SettingsCommand.Settings>
 
     private static string PromptCompanyName()
     {
+        // Try to get from git config
+        var gitName = TryGetGitConfig("user.name");
+        
         return AnsiConsole.Prompt(
             new TextPrompt<string>("[cyan]Company/Author name[/]:")
                 .PromptStyle("white")
+                .DefaultValue(gitName ?? string.Empty)
+                .AllowEmpty()
+                .ShowDefaultValue(gitName != null)
                 .Validate(name =>
                 {
                     if (string.IsNullOrWhiteSpace(name))
@@ -93,9 +109,15 @@ public sealed class SettingsCommand : Command<SettingsCommand.Settings>
 
     private static string PromptEmail()
     {
+        // Try to get from git config
+        var gitEmail = TryGetGitConfig("user.email");
+        
         return AnsiConsole.Prompt(
             new TextPrompt<string>("[cyan]Author email[/]:")
                 .PromptStyle("white")
+                .DefaultValue(gitEmail ?? string.Empty)
+                .AllowEmpty()
+                .ShowDefaultValue(gitEmail != null)
                 .Validate(email =>
                 {
                     if (string.IsNullOrWhiteSpace(email))
@@ -129,5 +151,37 @@ public sealed class SettingsCommand : Command<SettingsCommand.Settings>
                     return ValidationResult.Success();
                 })
         );
+    }
+
+    private static string? TryGetGitConfig(string key)
+    {
+        try
+        {
+            var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"config --global {key}",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+
+            if (proc == null) return null;
+            
+            proc.WaitForExit();
+            
+            if (proc.ExitCode == 0)
+            {
+                var output = proc.StandardOutput.ReadToEnd().Trim();
+                return string.IsNullOrWhiteSpace(output) ? null : output;
+            }
+        }
+        catch
+        {
+            // Git not installed or config not set
+        }
+
+        return null;
     }
 }
