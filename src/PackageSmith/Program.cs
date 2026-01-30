@@ -12,6 +12,16 @@ static class Program
 
         app.Configure(config =>
         {
+            config.AddCommand<CreateCommand>("create")
+                .WithDescription("Create a new Unity package from template")
+                .WithExample("create", "com.company.feature")
+                .WithExample("create", "com.company.netcode --modules Runtime,Editor");
+
+            config.AddCommand<SettingsCommand>("settings")
+                .WithDescription("Configure global package settings")
+                .WithExample("settings")
+                .WithExample("settings", "--force");
+
             config.AddCommand<InstallCommand>("install")
                 .WithDescription("Install a Unity package from local path")
                 .WithExample("install", "../MyPackage")
@@ -28,6 +38,12 @@ static class Program
             config.AddCommand<UpdateCommand>("update")
                 .WithDescription("Update iupk to latest version")
                 .WithExample("update");
+
+            config.AddCommand<ValidateCommand>("validate")
+                .WithDescription("Validate package structure and Unity guidelines")
+                .WithExample("validate")
+                .WithExample("validate", ".")
+                .WithExample("validate", "/path/to/package --verbose");
         });
 
         return app.Run(args);
