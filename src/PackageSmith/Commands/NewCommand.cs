@@ -10,7 +10,7 @@ using PackageSmith.Core.AI;
 
 namespace PackageSmith.Commands;
 
-public sealed class CreateCommand : Command<CreateCommand.Settings>
+public sealed class NewCommand : Command<NewCommand.Settings>
 {
     public sealed class Settings : CommandSettings
     {
@@ -71,7 +71,7 @@ public sealed class CreateCommand : Command<CreateCommand.Settings>
     private readonly IPackageGenerator _generator;
     private readonly IFileSystemWriter _writer;
 
-    public CreateCommand()
+    public NewCommand()
     {
         _configService = new ConfigService();
         _generator = new PackageGenerator();

@@ -10,19 +10,19 @@ NC='\033[0m'
 
 echo -e "${CYAN}"
 echo "========================================"
-echo "  iupk Uninstaller for Linux/Mac"
+echo "  PackageSmith Uninstaller for Linux/Mac"
 echo "========================================"
 echo -e "${NC}"
 
-INSTALL_DIR="$HOME/.local/share/iupk"
-SYMLINK="/usr/local/bin/iupk"
+INSTALL_DIR="$HOME/.local/share/pksmith"
+SYMLINK="/usr/local/bin/pksmith"
 
 if [ ! -d "$INSTALL_DIR" ] && [ ! -L "$SYMLINK" ]; then
-    echo -e "${YELLOW}iupk is not installed.${NC}"
+    echo -e "${YELLOW}PackageSmith is not installed.${NC}"
     exit 0
 fi
 
-echo -e "${CYAN}Removing iupk...${NC}"
+echo -e "${CYAN}Removing PackageSmith...${NC}"
 
 if [ -L "$SYMLINK" ]; then
     if [ -w /usr/local/bin ]; then

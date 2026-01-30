@@ -14,7 +14,7 @@ public class UpdateCommand : Command<UpdateCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings)
     {
-        AnsiConsole.MarkupLine("[cyan]iupk[/] self-update started...\n");
+        AnsiConsole.MarkupLine("[cyan]PackageSmith[/] self-update started...\n");
 
         var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
         var installDir = Path.GetDirectoryName(assemblyLocation);

@@ -13,7 +13,7 @@ MIN_DOTNET_VERSION="8.0.0"
 
 echo -e "${CYAN}"
 echo "========================================"
-echo "  iupk Installer for Linux/Mac"
+echo "  PackageSmith Installer for Linux/Mac"
 echo "========================================"
 echo -e "${NC}"
 
@@ -50,12 +50,12 @@ build_solution() {
 }
 
 install_binary() {
-    echo -e "${CYAN}Installing iupk...${NC}"
+    echo -e "${CYAN}Installing pksmith...${NC}"
 
     local script_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local bin_dir="$script_root/src/PackageSmith/bin/Release/net8.0"
-    local install_dir="$HOME/.local/share/iupk"
-    local bin_install="$install_dir/iupk"
+    local bin_dir="$script_root/src/PackageSmith/bin/Release/net9.0"
+    local install_dir="$HOME/.local/share/pksmith"
+    local bin_install="$install_dir/pksmith"
 
     if [ ! -f "$bin_dir/PackageSmith" ]; then
         echo -e "${RED}Error: Built binary not found at: $bin_dir/PackageSmith${NC}"
@@ -63,12 +63,14 @@ install_binary() {
     fi
 
     mkdir -p "$install_dir"
-    cp "$bin_dir/PackageSmith" "$bin_install"
+    cp "$bin_dir"/{PackageSmith,*.dll,*.json} "$install_dir/"
+    cp -r "$bin_dir"/{de,fr,sv} "$install_dir/" 2>/dev/null || true
+    mv "$install_dir/PackageSmith" "$bin_install"
     chmod +x "$bin_install"
 
     if [ -w /usr/local/bin ]; then
-        ln -sf "$bin_install" /usr/local/bin/iupk
-        echo -e "${GREEN}Symlinked to /usr/local/bin/iupk${NC}"
+        ln -sf "$bin_install" /usr/local/bin/pksmith
+        echo -e "${GREEN}Symlinked to /usr/local/bin/pksmith${NC}"
     else
         echo -e "${YELLOW}Cannot write to /usr/local/bin (requires sudo)${NC}"
         echo -e "${CYAN}Adding to PATH via shell config...${NC}"
@@ -94,7 +96,7 @@ detect_shell_and_add_path() {
 
     if ! grep -q "$install_dir" "$shell_config" 2>/dev/null; then
         echo "" >> "$shell_config"
-        echo "# iupk" >> "$shell_config"
+        echo "# PackageSmith" >> "$shell_config"
         echo "$path_line" >> "$shell_config"
         echo -e "${GREEN}Added to $shell_config${NC}"
         echo -e "${YELLOW}Run 'source $shell_config' or restart your shell${NC}"
@@ -106,13 +108,13 @@ detect_shell_and_add_path() {
 test_installation() {
     echo -e "${CYAN}Testing installation...${NC}"
 
-    if command -v iupk &> /dev/null; then
-        local version=$(iupk --version 2>&1 || echo "ok")
+    if command -v pksmith &> /dev/null; then
+        local version=$(pksmith --version 2>&1 || echo "ok")
         echo -e "${GREEN}Installation successful!${NC}"
-        echo -e "${CYAN}Run 'iupk' from any directory to use.${NC}"
+        echo -e "${CYAN}Run 'pksmith' from any directory to use.${NC}"
         return 0
     else
-        echo -e "${YELLOW}iupk command not found in PATH${NC}"
+        echo -e "${YELLOW}pksmith command not found in PATH${NC}"
         echo -e "${YELLOW}You may need to restart your shell${NC}"
         return 1
     fi

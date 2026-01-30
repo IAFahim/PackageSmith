@@ -8,7 +8,7 @@ function Write-ColorText {
 }
 
 Write-ColorText "`n========================================" "Cyan"
-Write-ColorText "  iupk Installer for Windows" "Cyan"
+Write-ColorText "  PackageSmith Installer for Windows" "Cyan"
 Write-ColorText "========================================`n" "Cyan"
 
 $MinDotnetVersion = [Version]"8.0.0"
@@ -69,14 +69,14 @@ function Build-Solution {
 }
 
 function Install-Shim {
-    Write-ColorText "`nInstalling iupk shim..." "Cyan"
+    Write-ColorText "`nInstalling pksmith shim..." "Cyan"
 
-    $shimDir = Join-Path $env:USERPROFILE ".iupk"
-    $binDir = Join-Path $PSScriptRoot "src\PackageSmith\bin\Release\net8.0"
+    $shimDir = Join-Path $env:USERPROFILE ".pksmith"
+    $binDir = Join-Path $PSScriptRoot "src\PackageSmith\bin\Release\net9.0"
     $exePath = Join-Path $binDir "PackageSmith.exe"
     $destDir = Join-Path $shimDir "bin"
-    $destExe = Join-Path $destDir "iupk.exe"
-    $shimPath = Join-Path $shimDir "iupk.cmd"
+    $destExe = Join-Path $destDir "pksmith.exe"
+    $shimPath = Join-Path $shimDir "pksmith.cmd"
 
     if (-not (Test-Path $exePath)) {
         Write-ColorText "Error: Built executable not found at: $exePath" "Red"
@@ -108,8 +108,8 @@ function Install-Shim {
 function Test-Installation {
     Write-ColorText "`nTesting installation..." "Cyan"
 
-    $shimDir = Join-Path $env:USERPROFILE ".iupk"
-    $shimPath = Join-Path $shimDir "iupk.cmd"
+    $shimDir = Join-Path $env:USERPROFILE ".pksmith"
+    $shimPath = Join-Path $shimDir "pksmith.cmd"
 
     if (-not (Test-Path $shimPath)) {
         Write-ColorText "Error: Shim not found at: $shimPath" "Red"
@@ -119,7 +119,7 @@ function Test-Installation {
     & $shimPath --version
     if ($LASTEXITCODE -eq 0) {
         Write-ColorText "`nInstallation successful!" "Green"
-        Write-ColorText "Run 'iupk' from any directory to use." "Cyan"
+        Write-ColorText "Run 'pksmith' from any directory to use." "Cyan"
         return $true
     }
 

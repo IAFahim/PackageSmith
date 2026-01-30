@@ -8,17 +8,17 @@ function Write-ColorText {
 }
 
 Write-ColorText "`n========================================" "Cyan"
-Write-ColorText "  iupk Uninstaller for Windows" "Cyan"
+Write-ColorText "  PackageSmith Uninstaller for Windows" "Cyan"
 Write-ColorText "========================================`n" "Cyan"
 
-$shimDir = Join-Path $env:USERPROFILE ".iupk"
+$shimDir = Join-Path $env:USERPROFILE ".pksmith"
 
 if (-not (Test-Path $shimDir)) {
-    Write-ColorText "iupk is not installed." "Yellow"
+    Write-ColorText "PackageSmith is not installed." "Yellow"
     exit 0
 }
 
-Write-ColorText "Removing iupk shim..." "Cyan"
+Write-ColorText "Removing PackageSmith shim..." "Cyan"
 
 $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($currentPath -like "*$shimDir*") {
