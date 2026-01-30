@@ -1,0 +1,60 @@
+name: Test Build
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        sdk: ['9.0.x']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.sdk }}
+
+    - name: Restore dependencies
+      run: dotnet restore PackageSmith.sln
+
+    - name: Build solution
+      run: dotnet build PackageSmith.sln --configuration Release --no-restore
+
+    - name: Test run
+      run: dotnet run --project src/PackageSmith/PackageSmith.csproj --configuration Release -- --help
+
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Build solution
+      run: dotnet build PackageSmith.sln --configuration Release
+
+    - name: List packages
+      run: dotnet run --project src/PackageSmith/PackageSmith.csproj --configuration Release -- list --help
