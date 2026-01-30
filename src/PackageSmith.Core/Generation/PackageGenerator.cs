@@ -85,6 +85,9 @@ public sealed class PackageGenerator : IPackageGenerator
         var selectedModules = template.SelectedModules;
         var ecsPreset = template.EcsPreset;
         var dependencies = template.Dependencies;
+        
+        // Extract asmdef root name from package name (e.g., "com.company.intent" -> "Intent")
+        var asmdefRoot = NamespaceGenerator.GetAsmDefRootFromPackageName(packageName);
 
         // package.json
         var manifest = new PackageManifest(
@@ -109,12 +112,12 @@ public sealed class PackageGenerator : IPackageGenerator
         // Runtime asmdef(s)
         if (hasSubAssemblies)
         {
-            var subList = SubAssemblyDefinition.GetStandardSubAssemblies(packageName);
+            var subList = SubAssemblyDefinition.GetStandardSubAssemblies(asmdefRoot);
             foreach (var sub in subList)
             {
                 if (subAssemblies.HasFlag(sub.Type))
                 {
-                    var asmdef = AsmDefTemplate.SubAssembly(packageName, in sub, in ecsPreset);
+                    var asmdef = AsmDefTemplate.SubAssembly(asmdefRoot, in sub, in ecsPreset);
                     var folderPath = Path.Combine(basePath, "Runtime", sub.GetFolderName());
                     files.Add(new VirtualFile(Path.Combine(folderPath, $"{sub.Name}.asmdef"), asmdef.ToJson()));
 
@@ -136,9 +139,9 @@ public sealed class PackageGenerator : IPackageGenerator
         }
         else if (selectedModules.HasFlag(PackageModule.Runtime))
         {
-            var asmdef = AsmDefTemplate.Runtime(packageName, in ecsPreset);
+            var asmdef = AsmDefTemplate.Runtime(asmdefRoot, in ecsPreset);
             files.Add(new VirtualFile(
-                Path.Combine(basePath, "Runtime", $"{packageName}.asmdef"),
+                Path.Combine(basePath, "Runtime", $"{asmdefRoot}.asmdef"),
                 asmdef.ToJson()
             ));
         }
@@ -147,15 +150,15 @@ public sealed class PackageGenerator : IPackageGenerator
         if (selectedModules.HasFlag(PackageModule.Editor))
         {
             var runtimeRefs = hasSubAssemblies
-                ? SubAssemblyDefinition.GetStandardSubAssemblies(packageName)
+                ? SubAssemblyDefinition.GetStandardSubAssemblies(asmdefRoot)
                     .Where(s => subAssemblies.HasFlag(s.Type))
                     .Select(s => s.Name)
                     .ToArray()
                 : Array.Empty<string>();
 
-            var asmdef = AsmDefTemplate.Editor(packageName, runtimeRefs);
+            var asmdef = AsmDefTemplate.Editor(asmdefRoot, runtimeRefs);
             files.Add(new VirtualFile(
-                Path.Combine(basePath, "Editor", $"{packageName}.Editor.asmdef"),
+                Path.Combine(basePath, "Editor", $"{asmdefRoot}.Editor.asmdef"),
                 asmdef.ToJson()
             ));
         }
@@ -164,15 +167,15 @@ public sealed class PackageGenerator : IPackageGenerator
         if (selectedModules.HasFlag(PackageModule.Tests))
         {
             var runtimeRefs = hasSubAssemblies
-                ? SubAssemblyDefinition.GetStandardSubAssemblies(packageName)
+                ? SubAssemblyDefinition.GetStandardSubAssemblies(asmdefRoot)
                     .Where(s => subAssemblies.HasFlag(s.Type))
                     .Select(s => s.Name)
                     .ToArray()
                 : Array.Empty<string>();
 
-            var asmdef = AsmDefTemplate.Tests(packageName, runtimeRefs);
+            var asmdef = AsmDefTemplate.Tests(asmdefRoot, runtimeRefs);
             files.Add(new VirtualFile(
-                Path.Combine(basePath, "Tests", $"{packageName}.Tests.asmdef"),
+                Path.Combine(basePath, "Tests", $"{asmdefRoot}.Tests.asmdef"),
                 asmdef.ToJson()
             ));
 

@@ -2,6 +2,25 @@ namespace PackageSmith.Core.AssemblyDefinition;
 
 public static class NamespaceGenerator
 {
+    /// <summary>
+    /// Extracts the root name for assembly definitions from a package name.
+    /// For "com.company.intent" returns "Intent".
+    /// For "io.github.tools" returns "Tools".
+    /// </summary>
+    public static string GetAsmDefRootFromPackageName(string packageName)
+    {
+        if (string.IsNullOrWhiteSpace(packageName))
+            return "UnknownAssembly";
+
+        var parts = packageName.Split('.');
+        if (parts.Length == 0)
+            return "UnknownAssembly";
+
+        // Get last segment and convert to PascalCase
+        var lastSegment = parts[^1];
+        return ToPascalCase(lastSegment);
+    }
+
     public static string FromPackageName(string packageName, string? subFolder = null)
     {
         if (string.IsNullOrWhiteSpace(packageName))

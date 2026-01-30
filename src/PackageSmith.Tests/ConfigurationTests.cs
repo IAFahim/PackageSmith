@@ -90,4 +90,15 @@ public sealed class ConfigurationTests
         };
         Assert.True(template.IsValid);
     }
+
+    [Theory]
+    [InlineData("com.company.intent", "Intent")]
+    [InlineData("io.github.tools", "Tools")]
+    [InlineData("org.unity.physics", "Physics")]
+    [InlineData("dev.example.my-package", "My-package")] // preserves hyphens if present
+    public void NamespaceGenerator_ExtractsAsmDefRootFromPackageName(string packageName, string expectedRoot)
+    {
+        var result = PackageSmith.Core.AssemblyDefinition.NamespaceGenerator.GetAsmDefRootFromPackageName(packageName);
+        Assert.Equal(expectedRoot, result);
+    }
 }

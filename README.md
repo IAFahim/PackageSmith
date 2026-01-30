@@ -36,13 +36,25 @@ pksmith templates list
 
 ### Quick Install
 
-**Windows (PowerShell)**
-```powershell
+**From GitHub** (recommended)
+```bash
+# Clone and install
+git clone https://github.com/IAFahim/packagesmith.git
+cd packagesmith
+
+# Windows
 .\install.ps1
+
+# Linux/Mac
+chmod +x install.sh && ./install.sh
 ```
 
-**Linux/Mac (Bash/Zsh)**
+**From local repository**
 ```bash
+# Windows
+.\install.ps1
+
+# Linux/Mac
 chmod +x install.sh
 ./install.sh
 ```
@@ -295,6 +307,30 @@ MyPackage/
 - Faster compilation (only changed assemblies rebuild)
 - Clear dependency flow
 - InternalsVisibleTo for testing without exposing internals
+
+### Package Naming vs Assembly Definition Names
+
+PackageSmith separates **package identity** (package.json) from **code organization** (assembly definitions):
+
+```bash
+# Package name follows Unity's reverse-domain notation
+pksmith new --name com.intents.intent
+
+# Generated structure uses clean asmdef names:
+com.intents.intent/
+├── Runtime/
+│   ├── Data/Intent.Data.asmdef          # Not "com.intents.intent.Data"
+│   └── Authoring/Intent.Authoring.asmdef
+├── Editor/Intent.Editor.asmdef
+└── Tests/Intent.Tests.asmdef
+```
+
+**Why this matters:**
+- **Package name** (`com.intents.intent`) - Used for package.json, installation, and uniqueness
+- **Asmdef names** (`Intent`, `Intent.Data`) - Used for code references and compile dependencies
+- **Namespaces** (`Com.Intents.Intent.Data`) - Derived from package name for consistency
+
+This matches Unity's own package structure where package name and asmdef names can differ.
 
 ## Examples
 
