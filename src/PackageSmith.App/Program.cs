@@ -45,7 +45,7 @@ static class Program
 
 		if (result == 0 && stopwatch.ElapsedMilliseconds > 500)
 		{
-			AnsiConsole.MarkupLine($"\n[steelblue]INFO:[/] Done in {FormatDuration(stopwatch.Elapsed)}");
+			AnsiConsole.MarkupLine($"\n[dim]Done in {FormatDuration(stopwatch.Elapsed)}[/]");
 		}
 
 		return result;
@@ -55,13 +55,7 @@ static class Program
 	{
 		if (Console.IsOutputRedirected) return;
 
-		AnsiConsole.Write(
-			new FigletText("PackageSmith")
-				.Centered()
-				.Color(Color.Blue));
-
-		AnsiConsole.WriteLine();
-		AnsiConsole.MarkupLine("[steelblue]Professional Unity Package Scaffolding CLI[/]");
+		AnsiConsole.MarkupLine("[bold cyan]◆[/] [bold white]PackageSmith[/] [dim]Unity Package Scaffolding[/]");
 		AnsiConsole.WriteLine();
 	}
 

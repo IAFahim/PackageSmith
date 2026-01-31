@@ -64,4 +64,51 @@ public static class GitLogic
 			success = false;
 		}
 	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static void TryGetGitConfig(out string userName, out string userEmail)
+	{
+		userName = "Unknown";
+		userEmail = "unknown@local";
+
+		try
+		{
+			userName = RunGitConfig("user.name") ?? "Unknown";
+			userEmail = RunGitConfig("user.email") ?? "unknown@local";
+		}
+		catch
+		{
+			// Fallback to defaults
+		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string? RunGitConfig(string key)
+	{
+		try
+		{
+			var startInfo = new ProcessStartInfo
+			{
+				FileName = "git",
+				Arguments = $"config --get {key}",
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				CreateNoWindow = true
+			};
+
+			using var proc = Process.Start(startInfo);
+			if (proc != null)
+			{
+				var result = proc.StandardOutput.ReadToEnd()?.Trim();
+				proc.WaitForExit();
+				return proc.ExitCode == 0 && !string.IsNullOrEmpty(result) ? result : null;
+			}
+		}
+		catch
+		{
+			// Ignore
+		}
+		return null;
+	}
 }
