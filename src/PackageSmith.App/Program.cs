@@ -1,0 +1,84 @@
+using System;
+using System.Linq;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using Spectre.Console;
+using Spectre.Console.Cli;
+using PackageSmith.App.Commands;
+using PackageSmith.App.UX;
+
+namespace PackageSmith.App;
+
+static class Program
+{
+	static int Main(string[] args)
+	{
+		if (args.Length == 0)
+		{
+			ShowBanner();
+			return StateMachine.Run();
+		}
+
+		if (!args.Any(x => x == "--json") && !args.Any(x => x == "--quiet"))
+		{
+			ShowBanner();
+		}
+
+		var stopwatch = Stopwatch.StartNew();
+		var app = new CommandApp();
+
+		app.Configure(config =>
+		{
+			config.SetApplicationName("pksmith");
+
+			config.AddCommand<NewCommand>("new")
+				.WithDescription("Create a new Unity package from template");
+
+			config.AddCommand<SettingsCommand>("settings")
+				.WithDescription("Configure global package settings");
+
+			config.SetInterceptor(new CommandInterceptor());
+		});
+
+		var result = app.Run(args);
+		stopwatch.Stop();
+
+		if (result == 0 && stopwatch.ElapsedMilliseconds > 500)
+		{
+			AnsiConsole.MarkupLine($"\n[steelblue]INFO:[/] Done in {FormatDuration(stopwatch.Elapsed)}");
+		}
+
+		return result;
+	}
+
+	private static void ShowBanner()
+	{
+		if (Console.IsOutputRedirected) return;
+
+		AnsiConsole.Write(
+			new FigletText("PackageSmith")
+				.Centered()
+				.Color(Color.Blue));
+
+		AnsiConsole.WriteLine();
+		AnsiConsole.MarkupLine("[steelblue]Professional Unity Package Scaffolding CLI[/]");
+		AnsiConsole.WriteLine();
+	}
+
+	private static string FormatDuration(TimeSpan duration)
+	{
+		if (duration.TotalSeconds < 1)
+			return $"{duration.TotalMilliseconds:F0}ms";
+		if (duration.TotalMinutes < 1)
+			return $"{duration.TotalSeconds:F1}s";
+		return $"{duration.TotalMinutes:F1}m";
+	}
+}
+
+internal class CommandInterceptor : ICommandInterceptor
+{
+	public void Intercept(CommandContext context, CommandSettings settings, IRemainingArguments args)
+	{
+		_ = Task.Run(async () => await Task.CompletedTask);
+	}
+}
