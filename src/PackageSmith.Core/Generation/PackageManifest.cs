@@ -47,8 +47,7 @@ public readonly struct PackageManifest
             Description = Description,
             Unity = Unity,
             Author = Author,
-            Keywords = Keywords.Length > 0 ? Keywords : null,
-            Type = "tool"
+            Keywords = Keywords.Length > 0 ? Keywords : null
         };
 
         // Add dependencies if any
@@ -112,8 +111,5 @@ public readonly struct PackageManifest
 
         [JsonPropertyName("dependencies")]
         public Dictionary<string, string>? Dependencies { get; set; }
-
-        [JsonPropertyName("type")]
-        public string Type { get; set; } = "tool";
     }
 }

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using PackageSmith.Core.Templates;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using PackageSmith.UI;
 
 namespace PackageSmith.Commands;
 
@@ -47,29 +48,31 @@ public class TemplatesCommand : Command<TemplatesCommand.Settings>
 
         var table = new Table()
             .Border(TableBorder.Rounded)
-            .AddColumn("[yellow]Name[/]")
-            .AddColumn("[yellow]Display Name[/]")
-            .AddColumn("[yellow]Description[/]")
-            .AddColumn("[yellow]Tags[/]");
+            .BorderColor(StyleManager.Primary)
+            .AddColumn($"[{StyleManager.Primary.ToMarkup()}]Name[/]")
+            .AddColumn($"[{StyleManager.Primary.ToMarkup()}]Display Name[/]")
+            .AddColumn($"[{StyleManager.Primary.ToMarkup()}]Description[/]")
+            .AddColumn($"[{StyleManager.Primary.ToMarkup()}]Tags[/]");
 
         foreach (var template in templates)
         {
-            var builtInMarker = template.BuiltIn ? " [dim](built-in)[/]" : "";
+            var builtInMarker = template.BuiltIn ? $"[{StyleManager.Tertiary.ToMarkup()}](built-in)[/]" : "";
             table.AddRow(
-                $"[cyan]{template.Name}[/]",
-                $"[green]{template.DisplayName}[/]{builtInMarker}",
+                $"[{StyleManager.Primary.ToMarkup()}]{template.Name}[/]",
+                $"[{StyleManager.SuccessColor.ToMarkup()}]{template.DisplayName}[/]{builtInMarker}",
                 template.Description,
-                string.Join(", ", template.Tags.Select(t => $"[blue]{t}[/]"))
+                string.Join(", ", template.Tags.Select(t => $"[{StyleManager.InfoColor.ToMarkup()}]{t}[/]"))
             );
         }
 
         AnsiConsole.Write(
             new Panel(table)
-                .Header("[bold yellow]📦 Available Templates[/]")
-                .BorderColor(Color.Yellow)
+                .Header($"[{StyleManager.Primary.ToMarkup()}]{StyleManager.SymBullet} Available Templates[/]")
+                .BorderStyle(new Style(StyleManager.Primary))
+                .Border(BoxBorder.Rounded)
         );
 
-        AnsiConsole.MarkupLine("\n[dim]Use 'pksmith templates info <name>' to see more details[/]");
+        AnsiConsole.MarkupLine($"\n[{StyleManager.Tertiary.ToMarkup()}]{StyleManager.SymInfo} Use 'pksmith templates info <name>' to see more details[/]");
 
         return 0;
     }
@@ -78,67 +81,68 @@ public class TemplatesCommand : Command<TemplatesCommand.Settings>
     {
         if (string.IsNullOrWhiteSpace(settings.TemplateName))
         {
-            AnsiConsole.MarkupLine("[red]Error: Template name is required for 'info' action[/]");
-            AnsiConsole.MarkupLine("[dim]Usage: pksmith templates info <template-name>[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Template name is required for 'info' action[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.Tertiary.ToMarkup()}]Usage: pksmith templates info <template-name>[/]");
             return 1;
         }
 
         var template = registry.GetTemplate(settings.TemplateName);
         if (template == null)
         {
-            AnsiConsole.MarkupLine($"[red]Error: Template '{settings.TemplateName}' not found[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Template '{settings.TemplateName}' not found[/]");
             return 1;
         }
 
         var panel = new Panel(
-            new Markup($@"[bold]{template.DisplayName}[/]
+            new Markup($@"[{StyleManager.Content.ToMarkup()}]{template.DisplayName}[/]
 
-[dim]Name:[/] [cyan]{template.Name}[/]
-[dim]Version:[/] {template.Version}
-[dim]Author:[/] {template.Author}
-[dim]Built-in:[/] {(template.BuiltIn ? "[green]Yes[/]" : "[yellow]No[/]")}
+[{StyleManager.Tertiary.ToMarkup()}]Name:[/] [{StyleManager.Primary.ToMarkup()}]{template.Name}[/]
+[{StyleManager.Tertiary.ToMarkup()}]Version:[/] {template.Version}
+[{StyleManager.Tertiary.ToMarkup()}]Author:[/] {template.Author}
+[{StyleManager.Tertiary.ToMarkup()}]Built-in:[/] {(template.BuiltIn ? $"[{StyleManager.SuccessColor.ToMarkup()}]Yes[/]" : $"[{StyleManager.WarningColor.ToMarkup()}]No[/]")}
 
-[bold yellow]Description:[/]
+[{StyleManager.Primary.ToMarkup()}]Description:[/]
 {template.Description}
 
-[bold yellow]Tags:[/]
-{string.Join(", ", template.Tags.Select(t => $"[blue]{t}[/]"))}
+[{StyleManager.Primary.ToMarkup()}]Tags:[/]
+{string.Join(", ", template.Tags.Select(t => $"[{StyleManager.InfoColor.ToMarkup()}]{t}[/]"))}
 
-[bold yellow]Modules:[/]
-{string.Join(", ", template.Modules.Select(m => $"[green]{m}[/]"))}
+[{StyleManager.Primary.ToMarkup()}]Modules:[/]
+{string.Join(", ", template.Modules.Select(m => $"[{StyleManager.SuccessColor.ToMarkup()}]{m}[/]"))}
 
-[bold yellow]Unity Version:[/]
+[{StyleManager.Primary.ToMarkup()}]Unity Version:[/]
 {template.Dependencies.Unity}
 
-{(template.Dependencies.Packages.Any() ? $@"[bold yellow]Package Dependencies:[/]
-{string.Join("\n", template.Dependencies.Packages.Select(p => $"  • {p}"))}" : "")}
+{(template.Dependencies.Packages.Any() ? $@"[{StyleManager.Primary.ToMarkup()}]Package Dependencies:[/]
+{string.Join("\n", template.Dependencies.Packages.Select(p => $"  {StyleManager.SymBullet} {p}"))}" : "")}
 "))
-            .Header($"[bold green]📦 {template.DisplayName}[/]")
-            .BorderColor(Color.Green);
+            .Header($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymBullet} {template.DisplayName}[/]")
+            .BorderStyle(new Style(StyleManager.SuccessColor))
+            .Border(BoxBorder.Rounded);
 
         AnsiConsole.Write(panel);
 
         if (template.AssemblyDependencies.Any())
         {
-            AnsiConsole.MarkupLine("\n[bold yellow]Assembly Dependencies:[/]");
+            AnsiConsole.MarkupLine($"\n[{StyleManager.Primary.ToMarkup()}]Assembly Dependencies:[/]");
             foreach (var (module, deps) in template.AssemblyDependencies)
             {
-                var depsStr = deps.Any() ? string.Join(", ", deps) : "[dim]none[/]";
-                AnsiConsole.MarkupLine($"  [cyan]{module}[/] → {depsStr}");
+                var depsStr = deps.Any() ? string.Join(", ", deps) : $"[{StyleManager.Tertiary.ToMarkup()}]none[/]";
+                AnsiConsole.MarkupLine($"  [{StyleManager.Primary.ToMarkup()}]{module}[/] {StyleManager.SymArrow} {depsStr}");
             }
         }
 
         if (template.InternalsVisibleTo.Any())
         {
-            AnsiConsole.MarkupLine("\n[bold yellow]InternalsVisibleTo Configuration:[/]");
+            AnsiConsole.MarkupLine($"\n[{StyleManager.Primary.ToMarkup()}]InternalsVisibleTo Configuration:[/]");
             foreach (var (module, visibleTo) in template.InternalsVisibleTo)
             {
-                var visibleStr = string.Join(", ", visibleTo.Select(v => $"[green]{v}[/]"));
-                AnsiConsole.MarkupLine($"  [cyan]{module}[/] → {visibleStr}");
+                var visibleStr = string.Join(", ", visibleTo.Select(v => $"[{StyleManager.SuccessColor.ToMarkup()}]{v}[/]"));
+                AnsiConsole.MarkupLine($"  [{StyleManager.Primary.ToMarkup()}]{module}[/] {StyleManager.SymArrow} {visibleStr}");
             }
         }
 
-        AnsiConsole.MarkupLine($"\n[dim]Create package: pksmith new {template.Name}[/]");
+        AnsiConsole.MarkupLine($"\n[{StyleManager.Tertiary.ToMarkup()}]{StyleManager.SymInfo} Create package: pksmith new {template.Name}[/]");
 
         return 0;
     }
@@ -147,50 +151,50 @@ public class TemplatesCommand : Command<TemplatesCommand.Settings>
     {
         if (string.IsNullOrWhiteSpace(settings.TemplateName))
         {
-            AnsiConsole.MarkupLine("[red]Error: Template name is required for 'preview' action[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Template name is required for 'preview' action[/]");
             return 1;
         }
 
         var template = registry.GetTemplate(settings.TemplateName);
         if (template == null)
         {
-            AnsiConsole.MarkupLine($"[red]Error: Template '{settings.TemplateName}' not found[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Template '{settings.TemplateName}' not found[/]");
             return 1;
         }
 
-        AnsiConsole.MarkupLine($"[bold green]📂 Package Structure Preview: {template.DisplayName}[/]\n");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymBullet} Package Structure Preview: {template.DisplayName}[/]\n");
 
-        var tree = new Tree($"[yellow]com.company.package/[/]");
-        
+        var tree = new Tree($"[{StyleManager.Primary.ToMarkup()}]com.company.package/[/]");
+
         foreach (var module in template.Modules)
         {
-            var moduleNode = tree.AddNode($"[cyan]{module}/[/]");
-            moduleNode.AddNode($"[dim]{module}.asmdef[/]");
-            
+            var moduleNode = tree.AddNode($"[{StyleManager.Primary.ToMarkup()}]{module}/[/]");
+            moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]{module}.asmdef[/]");
+
             if (module == "Data")
             {
-                moduleNode.AddNode("[dim]AssemblyInfo.cs[/]");
-                moduleNode.AddNode("[dim]Components/[/]");
+                moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]AssemblyInfo.cs[/]");
+                moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]Components/[/]");
             }
             else if (module == "Authoring")
             {
-                moduleNode.AddNode("[dim]AssemblyInfo.cs[/]");
-                moduleNode.AddNode("[dim]Bakers/[/]");
+                moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]AssemblyInfo.cs[/]");
+                moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]Bakers/[/]");
             }
             else if (module == "Systems")
             {
-                moduleNode.AddNode("[dim]Systems/[/]");
+                moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]Systems/[/]");
             }
             else if (module == "Tests")
             {
-                moduleNode.AddNode("[dim]TestFixtures/[/]");
+                moduleNode.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]TestFixtures/[/]");
             }
         }
 
-        tree.AddNode("[dim]package.json[/]");
-        tree.AddNode("[dim]README.md[/]");
-        tree.AddNode("[dim]CHANGELOG.md[/]");
-        tree.AddNode("[dim]LICENSE.md[/]");
+        tree.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]package.json[/]");
+        tree.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]README.md[/]");
+        tree.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]CHANGELOG.md[/]");
+        tree.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]LICENSE.md[/]");
 
         AnsiConsole.Write(tree);
 
@@ -199,16 +203,16 @@ public class TemplatesCommand : Command<TemplatesCommand.Settings>
 
     private int ShowUsage()
     {
-        AnsiConsole.MarkupLine("[yellow]Invalid action[/]");
-        AnsiConsole.MarkupLine("[dim]Usage:[/]");
-        AnsiConsole.MarkupLine("  [cyan]pksmith templates list[/] [dim]\\[--tag TAG] \\[--search TERM][/]");
-        AnsiConsole.MarkupLine("  [cyan]pksmith templates info <template-name>[/]");
-        AnsiConsole.MarkupLine("  [cyan]pksmith templates preview <template-name>[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.SymWarning} Invalid action[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.Tertiary.ToMarkup()}]Usage:[/]");
+        AnsiConsole.MarkupLine($"  [{StyleManager.Primary.ToMarkup()}]pksmith templates list[/] [{StyleManager.Tertiary.ToMarkup()}]\\[--tag TAG] \\[--search TERM][/]");
+        AnsiConsole.MarkupLine($"  [{StyleManager.Primary.ToMarkup()}]pksmith templates info <template-name>[/]");
+        AnsiConsole.MarkupLine($"  [{StyleManager.Primary.ToMarkup()}]pksmith templates preview <template-name>[/]");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[dim]Examples:[/]");
-        AnsiConsole.MarkupLine("  pksmith templates list --tag ecs");
-        AnsiConsole.MarkupLine("  pksmith templates info ecs-modular");
-        AnsiConsole.MarkupLine("  pksmith templates preview basic");
+        AnsiConsole.MarkupLine($"[{StyleManager.Tertiary.ToMarkup()}]Examples:[/]");
+        AnsiConsole.MarkupLine($"  pksmith templates list --tag ecs");
+        AnsiConsole.MarkupLine($"  pksmith templates info ecs-modular");
+        AnsiConsole.MarkupLine($"  pksmith templates preview basic");
         return 1;
     }
 }

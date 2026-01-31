@@ -8,18 +8,18 @@ public static class ProgressManager
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        AnsiConsole.Markup($"\r[{StyleManager.Dim.ToMarkup()}]{title}...[/]");
+        AnsiConsole.Markup($"\r[{StyleManager.Tertiary.ToMarkup()}]{title}...[/]");
         AnsiConsole.Write("\x1b[?25l"); // Hide cursor
 
         try
         {
-            action(new ProgressContext());
+            action(new ProgressContext(title));
         }
         finally
         {
             stopwatch.Stop();
             AnsiConsole.Write("\x1b[?25h"); // Show cursor
-            AnsiConsole.MarkupLine($"\r[{StyleManager.Dim.ToMarkup()}]{title}...[/] [{StyleManager.Success.ToMarkup()}{StyleManager.Success} Done ({FormatDuration(stopwatch.Elapsed)})[/]\n");
+            AnsiConsole.MarkupLine($"\r[{StyleManager.Tertiary.ToMarkup()}]{title}...[/] [{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Done ({FormatDuration(stopwatch.Elapsed)})[/]\n");
         }
     }
 
@@ -28,18 +28,18 @@ public static class ProgressManager
         T? result = default;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        AnsiConsole.Markup($"\r[{StyleManager.Dim.ToMarkup()}]{title}...[/]");
+        AnsiConsole.Markup($"\r[{StyleManager.Tertiary.ToMarkup()}]{title}...[/]");
         AnsiConsole.Write("\x1b[?25l"); // Hide cursor
 
         try
         {
-            result = action(new ProgressContext());
+            result = action(new ProgressContext(title));
         }
         finally
         {
             stopwatch.Stop();
             AnsiConsole.Write("\x1b[?25h"); // Show cursor
-            AnsiConsole.MarkupLine($"\r[{StyleManager.Dim.ToMarkup()}]{title}...[/] [{StyleManager.Success.ToMarkup()}]{StyleManager.Success} Done ({FormatDuration(stopwatch.Elapsed)})[/]\n");
+            AnsiConsole.MarkupLine($"\r[{StyleManager.Tertiary.ToMarkup()}]{title}...[/] [{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Done ({FormatDuration(stopwatch.Elapsed)})[/]\n");
         }
 
         return result!;
@@ -49,7 +49,7 @@ public static class ProgressManager
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        AnsiConsole.Markup($"\r[{StyleManager.Dim.ToMarkup()}]{title}...[/]");
+        AnsiConsole.Markup($"\r[{StyleManager.Tertiary.ToMarkup()}]{title}...[/]");
         AnsiConsole.Write("\x1b[?25l"); // Hide cursor
 
         try
@@ -63,7 +63,7 @@ public static class ProgressManager
         {
             stopwatch.Stop();
             AnsiConsole.Write("\x1b[?25h"); // Show cursor
-            AnsiConsole.MarkupLine($"\r[{StyleManager.Dim.ToMarkup()}]{title}...[/] [{StyleManager.Success.ToMarkup()}]{StyleManager.Success} Done ({FormatDuration(stopwatch.Elapsed)})[/]\n");
+            AnsiConsole.MarkupLine($"\r[{StyleManager.Tertiary.ToMarkup()}]{title}...[/] [{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Done ({FormatDuration(stopwatch.Elapsed)})[/]\n");
         }
     }
 
@@ -88,10 +88,12 @@ public interface IProgressContext
 public sealed class ProgressContext : IProgressContext
 {
     public ProgressTask? Task { get; }
+    private readonly string _title;
 
-    public ProgressContext(ProgressTask task = null!)
+    public ProgressContext(string title, ProgressTask task = null!)
     {
         Task = task;
+        _title = title;
     }
 
     public void Increment(double amount = 1) => Task?.Increment(amount);
@@ -99,9 +101,10 @@ public sealed class ProgressContext : IProgressContext
     {
         if (Task != null) Task.Value = value;
     }
+
     public void SetStatus(string status)
     {
-        // In-place status updates not available in Spectre.Console ProgressTask
-        // This is a no-op for the minimal progress style
+        // Update the progress line with the new status
+        AnsiConsole.Markup($"\r[{StyleManager.Tertiary.ToMarkup()}]{_title}...[/] [{StyleManager.InfoColor.ToMarkup()}]{status}[/]");
     }
 }
