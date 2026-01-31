@@ -51,6 +51,11 @@ public sealed class ConfigService : IConfigService
         }
     }
 
+    public PackageSmithConfig LoadConfigOrDefault()
+    {
+        return TryLoadConfig(out var config) ? config : PackageSmithConfig.GetDefault();
+    }
+
     public bool TrySaveConfig(in PackageSmithConfig config)
     {
         try

@@ -124,36 +124,9 @@ public sealed class NewCommand : Command<NewCommand.Settings>
             return 0;
         }
 
-        // Use progress bar for file writing
-        var writeSuccess = ProgressManager.ShowProgress("Writing Files", progress =>
-        {
-            var totalFiles = layout.Files.Length + layout.Directories.Length;
-            progress.Task.MaxValue = totalFiles;
+        ShowProfileStatusBar(in config);
 
-            // Create directories
-            foreach (var dir in layout.Directories)
-            {
-                Directory.CreateDirectory(dir.Path);
-                progress.Increment();
-                progress.SetStatus($"Creating {Path.GetFileName(dir.Path)}");
-            }
-
-            // Write files
-            foreach (var file in layout.Files)
-            {
-                var directory = Path.GetDirectoryName(file.Path);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                File.WriteAllText(file.Path, file.Content);
-                progress.Increment();
-                progress.SetStatus($"Writing {Path.GetFileName(file.Path)}");
-            }
-
-            return true;
-        });
+        var writeSuccess = LiveGenerationManager.GenerateWithLivePreview(layout, template.OutputPath, template.PackageName);
 
         if (writeSuccess)
         {
@@ -312,12 +285,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
     private string PromptTemplateSelection()
     {
-        var templates = _templateRegistry.Templates.Values
-            .Where(t => t.BuiltIn)
-            .OrderBy(t => t.DisplayName)
-            .ToDictionary(t => t.Name, t => ($"{StyleManager.IconTemplate} {t.DisplayName}", (string?)t.Description));
-
-        return PromptManager.PromptChoice("Select Template", templates);
+        return LivePreviewManager.PromptTemplateWithPreview(_templateRegistry, _configService.LoadConfigOrDefault()) ?? "basic";
     }
 
     private static string PromptPackageName()
@@ -489,5 +457,17 @@ public sealed class NewCommand : Command<NewCommand.Settings>
     private static bool ConfirmCreation()
     {
         return PromptManager.PromptConfirmation("Create this package?", defaultValue: true);
+    }
+
+    private static void ShowProfileStatusBar(in PackageSmithConfig config)
+    {
+        AnsiConsole.WriteLine();
+        var rule = new Rule(StyleManager.ProfileStatusBar(config))
+        {
+            Style = StyleManager.Muted,
+            Justification = Justify.Center
+        };
+        AnsiConsole.Write(rule);
+        AnsiConsole.WriteLine();
     }
 }

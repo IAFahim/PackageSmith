@@ -118,6 +118,7 @@ public static class PromptManager
         LayoutManager.PrintSection(title);
 
         AnsiConsole.MarkupLine($"[{StyleManager.InfoColor.ToMarkup()}]Select an option:[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}](Use arrows to navigate)[/]");
         AnsiConsole.WriteLine();
 
         var selector = new SelectionPrompt<string>()
@@ -150,17 +151,18 @@ public static class PromptManager
             .HighlightStyle(StyleManager.Accent)
             .PageSize(10)
             .UseConverter(choice => choices.TryGetValue(choice, out var info) ? info.Label : choice.ToString()!)
-            .NotRequired() // Allow empty selection
+            .NotRequired()
             .MoreChoicesText($"[{StyleManager.MutedColor.ToMarkup()}](Move up and down to reveal more options)[/]")
             .InstructionsText($"[{StyleManager.MutedColor.ToMarkup()}](Press [{StyleManager.InfoColor.ToMarkup()}]<space>[/] to toggle, [{StyleManager.InfoColor.ToMarkup()}]<enter>[/] to confirm)[/]")
             .AddChoices(choices.Keys);
 
-        var result = AnsiConsole.Prompt(selector);
+        var selectionResult = AnsiConsole.Prompt(selector);
+        var count = selectionResult.Count();
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Selected {result.Count} option(s)[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Selected {count} option(s)[/]");
         AnsiConsole.WriteLine();
 
-        return result.ToList();
+        return selectionResult.ToList();
     }
 
     public static bool PromptConfirmation(string message, bool defaultValue = true)

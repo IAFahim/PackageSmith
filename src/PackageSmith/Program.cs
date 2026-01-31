@@ -18,6 +18,10 @@ static class Program
                 AnsiConsole.WriteLine();
                 AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
                 AnsiConsole.MarkupLine($"\n[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} An unexpected error occurred[/]");
+
+                // Actionable suggestions based on exception type
+                ShowErrorRecoveryHint(ex);
+
                 AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}]Report issues at: https://github.com/your-repo/pksmith/issues[/]");
                 Environment.Exit(1);
             }
@@ -121,6 +125,30 @@ static class Program
         if (duration.TotalMinutes < 1)
             return $"{duration.TotalSeconds:F1}s";
         return $"{duration.TotalMinutes:F1}m";
+    }
+
+    private static void ShowErrorRecoveryHint(Exception ex)
+    {
+        var hint = ex switch
+        {
+            DirectoryNotFoundException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Did you mean to run 'pksmith new' first?[/]",
+            UnauthorizedAccessException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Check file permissions or run with appropriate access rights.[/]",
+            FileNotFoundException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Ensure the required file or package exists.[/]",
+            InvalidOperationException when ex.Message.Contains("git") => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Try running 'git init' or check your git configuration.[/]",
+            _ => null
+        };
+
+        if (hint != null)
+        {
+            AnsiConsole.Write(
+                new Panel(new Markup(hint))
+                {
+                    Border = BoxBorder.Rounded,
+                    BorderStyle = StyleManager.Info,
+                    Padding = new Padding(1, 0, 1, 0)
+                }
+            );
+        }
     }
 }
 

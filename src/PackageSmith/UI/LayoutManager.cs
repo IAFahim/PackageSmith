@@ -4,38 +4,8 @@ namespace PackageSmith.UI;
 
 public static class LayoutManager
 {
-    private static readonly string _logo = """
-        ____    __  ___
-    /  _/___/ /_/ /  |_  ____
-    / // __  /_  _  __/ __/
-  _/ // /_/ / / / / /_/
- /___/\____/_/ /_/\__/  v{0}
-""";
-
     public static void PrintHeader(string? context = null)
     {
-        var version = typeof(LayoutManager).Assembly.GetName().Version?.ToString(3) ?? "1.0";
-        var logo = string.Format(_logo, version);
-
-        var panel = new Panel(logo)
-            .Border(BoxBorder.Rounded)
-            .BorderStyle(StyleManager.Command)
-            .Header("PackageSmith")
-            .HeaderAlignment(Justify.Center)
-            .Padding(1, 1, 1, 1);
-
-        if (!string.IsNullOrEmpty(context))
-        {
-            panel = new Panel(new Markup(logo))
-                .Border(BoxBorder.Rounded)
-                .BorderStyle(StyleManager.Command)
-                .Header("PackageSmith")
-                .HeaderAlignment(Justify.Center)
-                .Padding(1, 1, 1, 1);
-        }
-
-        AnsiConsole.Write(panel);
-
         if (!string.IsNullOrEmpty(context))
         {
             AnsiConsole.MarkupLine($"[{StyleManager.InfoColor.ToMarkup()}]{context}[/]");

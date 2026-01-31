@@ -30,4 +30,16 @@ public struct PackageSmithConfig
         var now = new DateTime(LastUpdatedTicks, DateTimeKind.Utc);
         return $"Company: {CompanyName}\nEmail: {AuthorEmail}\nWebsite: {Website ?? "N/A"}\nUnity Version: {DefaultUnityVersion}\nLast Updated: {now:yyyy-MM-dd HH:mm:ss} UTC";
     }
+
+    public static PackageSmithConfig GetDefault()
+    {
+        return new PackageSmithConfig
+        {
+            CompanyName = "YourCompany",
+            AuthorEmail = "your.email@example.com",
+            Website = null,
+            DefaultUnityVersion = "2022.3",
+            LastUpdatedTicks = DateTime.UtcNow.Ticks
+        };
+    }
 }

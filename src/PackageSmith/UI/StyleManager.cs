@@ -48,6 +48,11 @@ public static class StyleManager
     public static string PathText(string text) => $"[{PathColor.ToMarkup()}]{text}[/]";
     public static string MutedText(string text) => $"[{MutedColor.ToMarkup()}]{text}[/]";
     public static string AccentText(string text) => $"[{AccentColor.ToMarkup()}]{text}[/]";
+
+    public static string ProfileStatusBar(PackageSmith.Core.Configuration.PackageSmithConfig config)
+    {
+        return $"[{MutedColor.ToMarkup()}]Profile: {config.CompanyName} | Unity: {config.DefaultUnityVersion} | License: MIT[/]";
+    }
 }
 
 public static class ColorExtensions
