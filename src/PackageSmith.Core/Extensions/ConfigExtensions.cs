@@ -71,7 +71,7 @@ public static class ConfigExtensions
 		{
 			CompanyName = company,
 			AuthorEmail = email,
-			Website = new FixedString64(string.Empty),
+			Website = new string(string.Empty),
 			DefaultUnityVersion = unityVersion,
 			LastUpdatedTicks = ticks
 		};

@@ -14,5 +14,6 @@ public enum TemplateType
 	IComponentData = 1 << 5,
 	ISharedComponentData = 1 << 6,
 	Baker = 1 << 7,
-	Authoring = IComponentData | Baker | MonoBehaviour
+	Authoring = 1 << 8,
+	EcsFull = 1 << 9
 }

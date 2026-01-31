@@ -72,8 +72,8 @@ function Install-Shim {
     Write-ColorText "`nInstalling pksmith shim..." "Cyan"
 
     $shimDir = Join-Path $env:USERPROFILE ".pksmith"
-    $binDir = Join-Path $PSScriptRoot "src\PackageSmith\bin\Release\net9.0"
-    $exePath = Join-Path $binDir "PackageSmith.exe"
+    $binDir = Join-Path $PSScriptRoot "src\PackageSmith.App\bin\Release\net9.0"
+    $exePath = Join-Path $binDir "PackageSmith.App.exe"
     $destDir = Join-Path $shimDir "bin"
     $destExe = Join-Path $destDir "pksmith.exe"
     $shimPath = Join-Path $shimDir "pksmith.cmd"

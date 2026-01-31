@@ -4,6 +4,7 @@ using Spectre.Console.Cli;
 using PackageSmith.App.Bridges;
 using PackageSmith.Data.State;
 using PackageSmith.Data.Types;
+using PackageSmith.Core.Logic;
 
 namespace PackageSmith.App.Commands;
 
@@ -29,12 +30,12 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
 		var package = new PackageState
 		{
-			PackageName = new FixedString64(settings.PackageName ?? "com.company.newpackage"),
-			DisplayName = new FixedString64(settings.DisplayName ?? "New Package"),
-			Description = new FixedString64("A new Unity package"),
-			OutputPath = new FixedString64(settings.OutputPath ?? "."),
-			CompanyName = new FixedString64("YourCompany"),
-			UnityVersion = new FixedString64("2022.3"),
+			PackageName = settings.PackageName ?? "com.company.newpackage",
+			DisplayName = settings.DisplayName ?? "New Package",
+			Description = "A new Unity package",
+			OutputPath = settings.OutputPath ?? ".",
+			CompanyName = "YourCompany",
+			UnityVersion = "2022.3",
 			SelectedModules = PackageModuleType.Runtime | PackageModuleType.Editor,
 			EcsPreset = new EcsPresetState { EnableEntities = false },
 			SubAssemblies = SubAssemblyType.None,
@@ -49,7 +50,12 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 			return 1;
 		}
 
+		PackageLogic.CombinePath(package.OutputPath, package.PackageName, out var fullPath);
+		GitLogic.TryInitGit(fullPath, out var gitSuccess);
+
 		AnsiConsole.MarkupLine("[steelblue]SUCCESS:[/] Package created successfully");
+		if (gitSuccess) AnsiConsole.MarkupLine("[grey]Git repository initialized[/]");
+
 		return 0;
 	}
 }

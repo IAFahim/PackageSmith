@@ -8,13 +8,13 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct PackageState
 {
-	public FixedString64 PackageName;
-	public FixedString64 DisplayName;
-	public FixedString64 Description;
+	public string PackageName;
+	public string DisplayName;
+	public string Description;
 	public PackageModuleType SelectedModules;
-	public FixedString64 OutputPath;
-	public FixedString64 CompanyName;
-	public FixedString64 UnityVersion;
+	public string OutputPath;
+	public string CompanyName;
+	public string UnityVersion;
 	public EcsPresetState EcsPreset;
 	public SubAssemblyType SubAssemblies;
 	public bool EnableSubAssemblies;

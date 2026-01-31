@@ -11,5 +11,7 @@ public enum SubAssemblyType
 	Authoring = 1 << 2,
 	Runtime = 1 << 3,
 	Systems = 1 << 4,
-	Debug = 1 << 5
+	Editor = 1 << 5,
+	Tests = 1 << 6,
+	Debug = 1 << 7
 }

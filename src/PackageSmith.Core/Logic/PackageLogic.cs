@@ -9,7 +9,7 @@ namespace PackageSmith.Core.Logic;
 public static class PackageLogic
 {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void ValidatePackageName(in FixedString64 packageName, out bool isValid)
+	public static void ValidatePackageName(in string packageName, out bool isValid)
 	{
 		var str = packageName.ToString();
 		isValid = !string.IsNullOrWhiteSpace(str) && str.StartsWith("com.");
@@ -52,20 +52,20 @@ public static class PackageLogic
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void CombinePath(in FixedString64 basePath, in FixedString64 relativePath, out string combinedPath)
+	public static void CombinePath(in string basePath, in string relativePath, out string combinedPath)
 	{
 		combinedPath = System.IO.Path.Combine(basePath.ToString(), relativePath.ToString());
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void GetAsmDefRoot(in FixedString64 packageName, out string asmdefRoot)
+	public static void GetAsmDefRoot(in string packageName, out string asmdefRoot)
 	{
 		var parts = packageName.ToString().Split('.');
 		asmdefRoot = parts.Length > 0 ? parts[^1] : packageName.ToString();
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void GenerateNamespace(in FixedString64 packageName, out string ns)
+	public static void GenerateNamespace(in string packageName, out string ns)
 	{
 		var parts = packageName.ToString().Split('.');
 		ns = string.Join(".", parts.Skip(2).Take(parts.Length - 2));

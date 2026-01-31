@@ -8,7 +8,7 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct AssemblyDefinitionState
 {
-	public FixedString64 Name;
+	public string Name;
 	public bool AllowUnsafeCode;
 	public bool OverrideReferences;
 	public bool AutoReferenced;

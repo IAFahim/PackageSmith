@@ -33,12 +33,12 @@ public static class AsmDefLogic
 
 		subAssemblies = new SubAssemblyState[]
 		{
-			new() { Name = new FixedString64($"{prefix}Core"), Type = SubAssemblyType.Core, DependencyCount = 0 },
-			new() { Name = new FixedString64($"{prefix}Data"), Type = SubAssemblyType.Data, DependencyCount = 1 },
-			new() { Name = new FixedString64($"{prefix}Authoring"), Type = SubAssemblyType.Authoring, DependencyCount = 2 },
-			new() { Name = new FixedString64($"{prefix}Runtime"), Type = SubAssemblyType.Runtime, DependencyCount = 2 },
-			new() { Name = new FixedString64($"{prefix}Systems"), Type = SubAssemblyType.Systems, DependencyCount = 3 },
-			new() { Name = new FixedString64($"{prefix}Debug"), Type = SubAssemblyType.Debug, DependencyCount = 3 }
+			new() { Name = new string($"{prefix}Core"), Type = SubAssemblyType.Core, DependencyCount = 0 },
+			new() { Name = new string($"{prefix}Data"), Type = SubAssemblyType.Data, DependencyCount = 1 },
+			new() { Name = new string($"{prefix}Authoring"), Type = SubAssemblyType.Authoring, DependencyCount = 2 },
+			new() { Name = new string($"{prefix}Runtime"), Type = SubAssemblyType.Runtime, DependencyCount = 2 },
+			new() { Name = new string($"{prefix}Systems"), Type = SubAssemblyType.Systems, DependencyCount = 3 },
+			new() { Name = new string($"{prefix}Debug"), Type = SubAssemblyType.Debug, DependencyCount = 3 }
 		};
 	}
 
@@ -47,15 +47,15 @@ public static class AsmDefLogic
 	{
 		var list = new List<ReferenceState>();
 
-		if (preset.EnableEntities) list.Add(new ReferenceState { Name = new FixedString64("Unity.Entities"), IsUnityReference = true });
-		if (preset.EnableBurst) list.Add(new ReferenceState { Name = new FixedString64("Unity.Burst"), IsUnityReference = true });
-		if (preset.EnableCollections) list.Add(new ReferenceState { Name = new FixedString64("Unity.Collections"), IsUnityReference = true });
-		if (preset.EnableMathematics) list.Add(new ReferenceState { Name = new FixedString64("Unity.Mathematics"), IsUnityReference = true });
-		if (preset.EnableJobs) list.Add(new ReferenceState { Name = new FixedString64("Unity.Jobs"), IsUnityReference = true });
-		if (preset.EnablePhysics) list.Add(new ReferenceState { Name = new FixedString64("Unity.Physics"), IsUnityReference = true });
-		if (preset.EnableEntitiesGraphics) list.Add(new ReferenceState { Name = new FixedString64("Unity.Entities.Graphics"), IsUnityReference = true });
-		if (preset.EnableEntitiesHybrid) list.Add(new ReferenceState { Name = new FixedString64("Unity.Entities.Hybrid"), IsUnityReference = true });
-		if (preset.EnableInputSystem) list.Add(new ReferenceState { Name = new FixedString64("Unity.InputSystem"), IsUnityReference = true });
+		if (preset.EnableEntities) list.Add(new ReferenceState { Name = new string("Unity.Entities"), IsUnityReference = true });
+		if (preset.EnableBurst) list.Add(new ReferenceState { Name = new string("Unity.Burst"), IsUnityReference = true });
+		if (preset.EnableCollections) list.Add(new ReferenceState { Name = new string("Unity.Collections"), IsUnityReference = true });
+		if (preset.EnableMathematics) list.Add(new ReferenceState { Name = new string("Unity.Mathematics"), IsUnityReference = true });
+		if (preset.EnableJobs) list.Add(new ReferenceState { Name = new string("Unity.Jobs"), IsUnityReference = true });
+		if (preset.EnablePhysics) list.Add(new ReferenceState { Name = new string("Unity.Physics"), IsUnityReference = true });
+		if (preset.EnableEntitiesGraphics) list.Add(new ReferenceState { Name = new string("Unity.Entities.Graphics"), IsUnityReference = true });
+		if (preset.EnableEntitiesHybrid) list.Add(new ReferenceState { Name = new string("Unity.Entities.Hybrid"), IsUnityReference = true });
+		if (preset.EnableInputSystem) list.Add(new ReferenceState { Name = new string("Unity.InputSystem"), IsUnityReference = true });
 
 		references = list.ToArray();
 	}

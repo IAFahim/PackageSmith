@@ -8,8 +8,8 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct VirtualFileState
 {
-	public FixedString64 Path;
-	public FixedString64 Content;
+	public string Path;
+	public string Content;
 	public int ContentLength;
 
 	public override readonly string ToString() => $"[File] {Path.ToString()}";
@@ -19,7 +19,7 @@ public struct VirtualFileState
 [StructLayout(LayoutKind.Sequential)]
 public struct VirtualDirectoryState
 {
-	public FixedString64 Path;
+	public string Path;
 
 	public override readonly string ToString() => $"[Dir] {Path.ToString()}";
 }

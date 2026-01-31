@@ -8,7 +8,7 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct SubAssemblyState
 {
-	public FixedString64 Name;
+	public string Name;
 	public SubAssemblyType Type;
 	public int DependencyCount;
 

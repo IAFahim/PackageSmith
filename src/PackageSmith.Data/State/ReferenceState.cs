@@ -8,7 +8,7 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct ReferenceState
 {
-	public FixedString64 Name;
+	public string Name;
 	public bool IsUnityReference;
 
 	public override readonly string ToString() => $"[Ref] {Name.ToString()} {(IsUnityReference ? "[Unity]" : "[Custom]")}";

@@ -53,19 +53,19 @@ install_binary() {
     echo -e "${CYAN}Installing pksmith...${NC}"
 
     local script_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local bin_dir="$script_root/src/PackageSmith/bin/Release/net9.0"
+    local bin_dir="$script_root/src/PackageSmith.App/bin/Release/net9.0"
     local install_dir="$HOME/.local/share/pksmith"
     local bin_install="$install_dir/pksmith"
 
-    if [ ! -f "$bin_dir/PackageSmith" ]; then
-        echo -e "${RED}Error: Built binary not found at: $bin_dir/PackageSmith${NC}"
+    if [ ! -f "$bin_dir/PackageSmith.App" ]; then
+        echo -e "${RED}Error: Built binary not found at: $bin_dir/PackageSmith.App${NC}"
         exit 1
     fi
 
     mkdir -p "$install_dir"
-    cp "$bin_dir"/{PackageSmith,*.dll,*.json} "$install_dir/"
+    cp "$bin_dir"/{PackageSmith.App,*.dll,*.json} "$install_dir/"
     cp -r "$bin_dir"/{de,fr,sv} "$install_dir/" 2>/dev/null || true
-    mv "$install_dir/PackageSmith" "$bin_install"
+    mv "$install_dir/PackageSmith.App" "$bin_install"
     chmod +x "$bin_install"
 
     if [ -w /usr/local/bin ]; then

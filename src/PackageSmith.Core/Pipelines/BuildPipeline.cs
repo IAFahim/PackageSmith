@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using PackageSmith.Data.Config;
 using PackageSmith.Data.State;
 using PackageSmith.Data.Types;
@@ -36,7 +37,7 @@ public sealed class BuildPipeline : IPackageGenerator
 		var dirs = new List<VirtualDirectoryState>();
 
 		package.TryGetBasePath(out var basePath);
-		dirs.Add(new VirtualDirectoryState { Path = new FixedString64(basePath) });
+		dirs.Add(new VirtualDirectoryState { Path = new string(basePath) });
 
 		package.TryGetAsmDefRoot(out var asmdefRoot);
 
@@ -47,33 +48,33 @@ public sealed class BuildPipeline : IPackageGenerator
 			{
 				if (package.SubAssemblies.HasFlag(sub.Type))
 				{
-					dirs.Add(new VirtualDirectoryState { Path = new FixedString64(System.IO.Path.Combine(basePath, sub.Name.ToString())) });
+					dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, sub.Name.ToString())) });
 				}
 			}
 		}
 		else if (package.HasModule(PackageModuleType.Runtime))
 		{
-			dirs.Add(new VirtualDirectoryState { Path = new FixedString64(System.IO.Path.Combine(basePath, "Runtime")) });
+			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, "Runtime")) });
 		}
 
 		if (package.HasModule(PackageModuleType.Editor))
 		{
 			var editorFolder = hasSubAssemblies ? $"{asmdefRoot}.Editor" : "Editor";
-			dirs.Add(new VirtualDirectoryState { Path = new FixedString64(System.IO.Path.Combine(basePath, editorFolder)) });
+			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, editorFolder)) });
 		}
 
 		if (package.HasModule(PackageModuleType.Tests))
 		{
 			var testsFolder = hasSubAssemblies ? $"{asmdefRoot}.Tests" : "Tests";
-			dirs.Add(new VirtualDirectoryState { Path = new FixedString64(System.IO.Path.Combine(basePath, testsFolder)) });
+			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, testsFolder)) });
 		}
 
 		if (package.HasModule(PackageModuleType.Samples))
 		{
-			dirs.Add(new VirtualDirectoryState { Path = new FixedString64(System.IO.Path.Combine(basePath, "Samples~")) });
+			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, "Samples~")) });
 		}
 
-		dirs.Add(new VirtualDirectoryState { Path = new FixedString64(System.IO.Path.Combine(basePath, "Documentation~")) });
+		dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, "Documentation~")) });
 
 		return dirs.ToArray();
 	}
@@ -85,19 +86,149 @@ public sealed class BuildPipeline : IPackageGenerator
 		package.TryGetBasePath(out var basePath);
 		package.TryGetAsmDefRoot(out var asmdefRoot);
 
-		var manifest = GeneratePackageManifest(in package, in config);
+		// 1. Manifest, Readme, GitIgnore
 		files.Add(new VirtualFileState
 		{
-			Path = new FixedString64(System.IO.Path.Combine(basePath, "package.json")),
-			Content = new FixedString64(manifest)
+			Path = new string(System.IO.Path.Combine(basePath, "package.json")),
+			Content = new string(GeneratePackageManifest(in package, in config))
 		});
 
-		var readme = GenerateReadme(in package);
 		files.Add(new VirtualFileState
 		{
-			Path = new FixedString64(System.IO.Path.Combine(basePath, "README.md")),
-			Content = new FixedString64(readme)
+			Path = new string(System.IO.Path.Combine(basePath, "README.md")),
+			Content = new string(GenerateReadme(in package))
 		});
+
+		files.Add(new VirtualFileState
+		{
+			Path = new string(System.IO.Path.Combine(basePath, ".gitignore")),
+			Content = new string(GitLogic.GenerateGitIgnore())
+		});
+
+		// 2. Generate AsmDefs
+		if (package.HasModule(PackageModuleType.Runtime) && !hasSubAssemblies)
+		{
+			AsmDefLogic.GetEcsReferences(in package.EcsPreset, out var refs);
+			var asmdefContent = AsmDefGenerationLogic.GenerateJson(asmdefRoot, refs, package.EcsPreset.EnableBurst);
+
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, "Runtime", $"{asmdefRoot}.asmdef")),
+				Content = new string(asmdefContent)
+			});
+		}
+
+		if (package.HasModule(PackageModuleType.Editor))
+		{
+			var editorAsmdefName = hasSubAssemblies ? $"{asmdefRoot}.Editor" : $"{asmdefRoot}.Editor";
+			var runtimeRefs = hasSubAssemblies
+				? SubAssemblyLogic.GetRuntimeAssemblies(package.SubAssemblies, asmdefRoot)
+				: new[] { asmdefRoot };
+
+			var editorAsmdef = AsmDefGenerationLogic.GenerateEditorJson(editorAsmdefName, runtimeRefs);
+			var editorFolder = hasSubAssemblies ? editorAsmdefName : "Editor";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, editorFolder, $"{editorAsmdefName}.asmdef")),
+				Content = new string(editorAsmdef)
+			});
+		}
+
+		// 3. Generate Code Templates
+		package.TryGetNamespace(out var ns);
+		var featureName = package.DisplayName.ToString();
+		var packageParts = package.PackageName.ToString().Split('.');
+		var baseName = packageParts.Length > 0 ? packageParts[^1] : "Feature";
+
+		if (package.SelectedTemplate.HasFlag(TemplateType.MonoBehaviour))
+		{
+			var code = TemplateLogic.GenerateMonoBehaviour(ns, $"{featureName}Behavior");
+			var runtimeFolder = hasSubAssemblies ? $"{asmdefRoot}.Runtime" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, runtimeFolder, $"{featureName}Behavior.cs")),
+				Content = new string(code)
+			});
+		}
+
+		if (package.SelectedTemplate.HasFlag(TemplateType.ScriptableObject))
+		{
+			var code = TemplateLogic.GenerateScriptableObject(ns, $"{featureName}Config");
+			var runtimeFolder = hasSubAssemblies ? $"{asmdefRoot}.Runtime" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, runtimeFolder, $"{featureName}Config.cs")),
+				Content = new string(code)
+			});
+		}
+
+		if (package.SelectedTemplate.HasFlag(TemplateType.SystemBase))
+		{
+			var code = TemplateLogic.GenerateSystemBase(ns, $"{featureName}System");
+			var systemsFolder = hasSubAssemblies ? $"{asmdefRoot}.Systems" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, systemsFolder, $"{featureName}System.cs")),
+				Content = new string(code)
+			});
+		}
+
+		if (package.SelectedTemplate.HasFlag(TemplateType.IComponentData))
+		{
+			var code = TemplateLogic.GenerateIComponentData(ns, $"{baseName}Component");
+			var dataFolder = hasSubAssemblies ? $"{asmdefRoot}.Data" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, dataFolder, $"{baseName}Component.cs")),
+				Content = new string(code)
+			});
+		}
+
+		if (package.SelectedTemplate.HasFlag(TemplateType.Authoring))
+		{
+			var code = TemplateLogic.GenerateAuthoring(ns, baseName, $"{baseName}Component");
+			var authoringFolder = hasSubAssemblies ? $"{asmdefRoot}.Authoring" : "Authoring";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, authoringFolder, $"{baseName}Authoring.cs")),
+				Content = new string(code)
+			});
+		}
+
+		if (package.SelectedTemplate.HasFlag(TemplateType.EcsFull))
+		{
+			var componentName = $"{baseName}Component";
+
+			// Component Data
+			var componentCode = TemplateLogic.GenerateIComponentData(ns, componentName);
+			var dataFolder = hasSubAssemblies ? $"{asmdefRoot}.Data" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, dataFolder, $"{componentName}.cs")),
+				Content = new string(componentCode)
+			});
+
+			// Authoring
+			if (hasSubAssemblies)
+			{
+				var authoringNs = $"{ns}.Authoring";
+				var authoringCode = TemplateLogic.GenerateAuthoring(authoringNs, baseName, componentName);
+				files.Add(new VirtualFileState
+				{
+					Path = new string(System.IO.Path.Combine(basePath, $"{asmdefRoot}.Authoring", $"{baseName}Authoring.cs")),
+					Content = new string(authoringCode)
+				});
+			}
+
+			// System
+			var systemCode = TemplateLogic.GenerateSystemBase(ns, $"{baseName}System");
+			var systemsFolder = hasSubAssemblies ? $"{asmdefRoot}.Systems" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, systemsFolder, $"{baseName}System.cs")),
+				Content = new string(systemCode)
+			});
+		}
 
 		return files.ToArray();
 	}

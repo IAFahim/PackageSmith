@@ -39,10 +39,10 @@ public sealed class SettingsCommand : Command<SettingsCommand.Settings>
 			.AddColumn("[steelblue]Setting[/]")
 			.AddColumn("[steelblue]Value[/]");
 
-		table.AddRow("Company", config.CompanyName.ToString());
-		table.AddRow("Email", config.AuthorEmail.ToString());
-		table.AddRow("Unity Version", config.DefaultUnityVersion.ToString());
-		table.AddRow("Website", config.Website.IsEmpty ? "[grey]N/A[/]" : config.Website.ToString());
+		table.AddRow("Company", config.CompanyName);
+		table.AddRow("Email", config.AuthorEmail);
+		table.AddRow("Unity Version", config.DefaultUnityVersion);
+		table.AddRow("Website", string.IsNullOrEmpty(config.Website) ? "[grey]N/A[/]" : config.Website);
 
 		AnsiConsole.Write(table);
 	}

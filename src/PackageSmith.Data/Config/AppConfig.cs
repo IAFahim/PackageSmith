@@ -10,16 +10,16 @@ namespace PackageSmith.Data.Config;
 public struct AppConfig
 {
 	[JsonPropertyName("companyName")]
-	public FixedString64 CompanyName;
+	public string CompanyName;
 
 	[JsonPropertyName("authorEmail")]
-	public FixedString64 AuthorEmail;
+	public string AuthorEmail;
 
 	[JsonPropertyName("website")]
-	public FixedString64 Website;
+	public string Website;
 
 	[JsonPropertyName("defaultUnityVersion")]
-	public FixedString64 DefaultUnityVersion;
+	public string DefaultUnityVersion;
 
 	[JsonPropertyName("lastUpdatedTicks")]
 	public long LastUpdatedTicks;
