@@ -86,7 +86,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
     {
         if (!_configService.ConfigExists())
         {
-            AnsiConsole.MarkupLine($"[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.IconWarning} No configuration found. Running setup wizard...[/]\n");
+            AnsiConsole.MarkupLine($"[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.SymWarning} No configuration found. Running setup wizard...[/]\n");
             var settingsCmd = new SettingsCommand();
             settingsCmd.Execute(context, new SettingsCommand.Settings());
         }
@@ -97,7 +97,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
         if (!_generator.TryGenerate(in template, in config, out var layout))
         {
-            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Failed to generate package layout[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Failed to generate package layout[/]");
             return 1;
         }
 
@@ -112,7 +112,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         if (settings.DryRun)
         {
             ShowPreview(in template, in layout);
-            AnsiConsole.MarkupLine($"\n[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.IconInfo} Dry run completed. No files were written[/]");
+            AnsiConsole.MarkupLine($"\n[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.SymInfo} Dry run completed. No files were written[/]");
             return 0;
         }
 
@@ -120,7 +120,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
         if (!settings.SkipConfirmation && !ConfirmCreation())
         {
-            AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.IconInfo} Operation cancelled[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.SymInfo} Operation cancelled[/]");
             return 0;
         }
 
@@ -140,11 +140,11 @@ public sealed class NewCommand : Command<NewCommand.Settings>
             }
 
             LayoutManager.PrintFooter();
-            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Package created at:[/] [{StyleManager.PathColor.ToMarkup()}]{template.OutputPath}/{template.PackageName}[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Package created at:[/] [{StyleManager.PathColor.ToMarkup()}]{template.OutputPath}/{template.PackageName}[/]");
             return 0;
         }
 
-        AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Failed to write package to disk[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Failed to write package to disk[/]");
         return 1;
     }
 
@@ -297,10 +297,10 @@ public sealed class NewCommand : Command<NewCommand.Settings>
     {
         var modules = new Dictionary<PackageModule, (string Label, string? Description)>
         {
-            { PackageModule.Runtime, ($"{StyleManager.IconCode} Runtime", "Runtime code and components") },
-            { PackageModule.Editor, ($"{StyleManager.IconConfig} Editor", "Editor-only tools and utilities") },
-            { PackageModule.Tests, ($"{StyleManager.IconTest} Tests", "Test assemblies and test runners") },
-            { PackageModule.Samples, ($"{StyleManager.IconFolder} Samples", "Example scenes and usage samples") }
+            { PackageModule.Runtime, ($"{StyleManager.SymBullet} Runtime", "Runtime code and components") },
+            { PackageModule.Editor, ($"{StyleManager.SymBullet} Editor", "Editor-only tools and utilities") },
+            { PackageModule.Tests, ($"{StyleManager.SymBullet} Tests", "Test assemblies and test runners") },
+            { PackageModule.Samples, ($"{StyleManager.SymBullet} Samples", "Example scenes and usage samples") }
         };
 
         var selected = PromptManager.PromptMultipleChoices("Select Modules", modules);
@@ -397,21 +397,20 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         var outputPath = template.OutputPath;
         var packagePath = Path.Combine(outputPath, packageName);
 
-        var root = new Tree($"[{StyleManager.CommandColor.ToMarkup()}]{StyleManager.IconPackage} {packageName}/[/]");
+        var root = new Tree($"[{StyleManager.Primary.ToMarkup()}]{packageName}/[/]");
 
         // Add directories
         foreach (var dir in layout.Directories.Skip(1))
         {
             var relativePath = GetRelativePath(dir.Path, packagePath);
-            var node = root.AddNode($"[{StyleManager.PathColor.ToMarkup()}]{StyleManager.IconFolder} {relativePath}/[/]");
+            var node = root.AddNode($"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.SymBullet} {relativePath}/[/]");
 
             // Add files in this directory
             var filesInDir = layout.Files.Where(f => Path.GetDirectoryName(f.Path) == dir.Path);
             foreach (var file in filesInDir)
             {
                 var fileName = Path.GetFileName(file.Path);
-                var icon = GetFileIcon(fileName);
-                node.AddNode($"[{StyleManager.InfoColor.ToMarkup()}]{icon} {fileName}[/]");
+                node.AddNode($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymBullet} {fileName}[/]");
             }
         }
 
@@ -425,24 +424,11 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         foreach (var file in rootFiles)
         {
             var fileName = Path.GetFileName(file.Path);
-            var icon = GetFileIcon(fileName);
-            root.AddNode($"[{StyleManager.InfoColor.ToMarkup()}]{icon} {fileName}[/]");
+            root.AddNode($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymBullet} {fileName}[/]");
         }
 
         AnsiConsole.Write(root);
         AnsiConsole.WriteLine();
-    }
-
-    private static string GetFileIcon(string fileName)
-    {
-        return Path.GetExtension(fileName) switch
-        {
-            ".asmdef" => StyleManager.IconCode,
-            ".cs" => StyleManager.IconCode,
-            ".md" => StyleManager.IconInfo,
-            ".json" => StyleManager.IconConfig,
-            _ => StyleManager.IconDependency
-        };
     }
 
     private static string GetRelativePath(string fullPath, string basePath)

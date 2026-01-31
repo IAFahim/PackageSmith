@@ -8,7 +8,7 @@ public static class LiveGenerationManager
     public static bool GenerateWithLivePreview(PackageLayout layout, string outputPath, string packageName)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Creating package structure...[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.SymInfo} Creating package structure...[/]");
         AnsiConsole.WriteLine();
 
         var packagePath = Path.Combine(outputPath, packageName);
@@ -52,7 +52,7 @@ public static class LiveGenerationManager
                 }
             });
 
-        AnsiConsole.MarkupLine($"\n[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Package created successfully[/]");
+        AnsiConsole.MarkupLine($"\n[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Package created successfully[/]");
         AnsiConsole.WriteLine();
 
         return true;
@@ -64,26 +64,26 @@ public static class LiveGenerationManager
         HashSet<string> createdDirectories,
         HashSet<string> createdFiles)
     {
-        var root = new Tree($"[{StyleManager.CommandColor.ToMarkup()}]{StyleManager.IconPackage} {Path.GetFileName(packagePath)}/[/]");
+        var root = new Tree($"[{StyleManager.Primary.ToMarkup()}]{Path.GetFileName(packagePath)}/[/]");
 
         foreach (var dir in layout.Directories.Skip(1))
         {
             var relativePath = GetRelativePath(dir.Path, packagePath);
             var isCreated = createdDirectories.Contains(dir.Path);
-            var style = isCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
-            var icon = isCreated ? StyleManager.IconSuccess : StyleManager.IconFolder;
+            var color = isCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
+            var prefix = isCreated ? StyleManager.SymSuccess : StyleManager.SymBullet;
 
-            var node = root.AddNode($"[{style.ToMarkup()}]{icon} {relativePath}/[/]");
+            var node = root.AddNode($"[{color.ToMarkup()}]{prefix} {relativePath}/[/]");
 
             var filesInDir = layout.Files.Where(f => Path.GetDirectoryName(f.Path) == dir.Path);
             foreach (var file in filesInDir)
             {
                 var fileName = Path.GetFileName(file.Path);
                 var fileCreated = createdFiles.Contains(file.Path);
-                var fileStyle = fileCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
-                var fileIcon = fileCreated ? StyleManager.IconSuccess : GetFileIcon(fileName);
+                var fileColor = fileCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
+                var filePrefix = fileCreated ? StyleManager.SymSuccess : StyleManager.SymBullet;
 
-                node.AddNode($"[{fileStyle.ToMarkup()}]{fileIcon} {fileName}[/]");
+                node.AddNode($"[{fileColor.ToMarkup()}]{filePrefix} {fileName}[/]");
             }
         }
 
@@ -97,10 +97,10 @@ public static class LiveGenerationManager
         {
             var fileName = Path.GetFileName(file.Path);
             var fileCreated = createdFiles.Contains(file.Path);
-            var fileStyle = fileCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
-            var fileIcon = fileCreated ? StyleManager.IconSuccess : GetFileIcon(fileName);
+            var fileColor = fileCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
+            var filePrefix = fileCreated ? StyleManager.SymSuccess : StyleManager.SymBullet;
 
-            root.AddNode($"[{fileStyle.ToMarkup()}]{fileIcon} {fileName}[/]");
+            root.AddNode($"[{fileColor.ToMarkup()}]{filePrefix} {fileName}[/]");
         }
 
         return root;
@@ -113,17 +113,5 @@ public static class LiveGenerationManager
             return fullPath.Substring(basePath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
         return fullPath;
-    }
-
-    private static string GetFileIcon(string fileName)
-    {
-        return Path.GetExtension(fileName) switch
-        {
-            ".asmdef" => StyleManager.IconCode,
-            ".cs" => StyleManager.IconCode,
-            ".md" => StyleManager.IconInfo,
-            ".json" => StyleManager.IconConfig,
-            _ => StyleManager.IconDependency
-        };
     }
 }

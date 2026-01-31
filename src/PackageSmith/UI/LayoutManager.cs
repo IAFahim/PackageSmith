@@ -34,6 +34,11 @@ public static class LayoutManager
         AnsiConsole.WriteLine();
     }
 
+    public static void PrintKeyboardHint()
+    {
+        AnsiConsole.MarkupLine($"\n[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymInfo} Up/Down Navigate • Enter Select • Esc Cancel[/]\n");
+    }
+
     public static void PrintKeyValue(string key, string value, string? icon = null)
     {
         var iconText = string.IsNullOrEmpty(icon) ? "" : $"{icon} ";

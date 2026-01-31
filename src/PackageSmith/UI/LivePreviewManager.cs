@@ -19,20 +19,18 @@ public static class LivePreviewManager
         if (templates.Count == 0)
             return null;
 
-        LayoutManager.PrintSection("Select Template");
-        AnsiConsole.MarkupLine($"[{StyleManager.MutedColor.ToMarkup()}](Use up/down arrows, Enter to select)[/]");
+        LayoutManager.PrintHeader("Select Template");
+        AnsiConsole.MarkupLine($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymInfo} Up/Down Navigate • Enter Select • Esc Cancel[/]");
         AnsiConsole.WriteLine();
 
         var choices = new SelectionPrompt<TemplateMetadata>()
-            .Title($"[{StyleManager.CommandColor.ToMarkup()}]Choose a template:[/]")
-            .HighlightStyle(StyleManager.Accent)
+            .Title($"[{StyleManager.Primary.ToMarkup()}]Choose a template:[/]")
+            .HighlightStyle(new Style(foreground: StyleManager.Primary))
             .PageSize(10)
-            .UseConverter(t => t.DisplayName)
+            .UseConverter(t => $"{StyleManager.SymArrow} {t.DisplayName}")
             .AddChoices(templates);
 
         var selected = AnsiConsole.Prompt(choices);
-
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Selected: {selected.DisplayName}[/]\n");
         return selected.Name;
     }
 }

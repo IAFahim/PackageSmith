@@ -17,7 +17,7 @@ static class Program
             {
                 AnsiConsole.WriteLine();
                 AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
-                AnsiConsole.MarkupLine($"\n[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} An unexpected error occurred[/]");
+                AnsiConsole.MarkupLine($"\n[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} An unexpected error occurred[/]");
 
                 // Actionable suggestions based on exception type
                 ShowErrorRecoveryHint(ex);
@@ -105,7 +105,7 @@ static class Program
 
         if (result == 0 && stopwatch.ElapsedMilliseconds > 500)
         {
-            AnsiConsole.MarkupLine($"\n[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.IconInfo} Done in {FormatDuration(stopwatch.Elapsed)}[/]");
+            AnsiConsole.MarkupLine($"\n[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.SymInfo} Done in {FormatDuration(stopwatch.Elapsed)}[/]");
         }
 
         return result;
@@ -131,10 +131,10 @@ static class Program
     {
         var hint = ex switch
         {
-            DirectoryNotFoundException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Did you mean to run 'pksmith new' first?[/]",
-            UnauthorizedAccessException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Check file permissions or run with appropriate access rights.[/]",
-            FileNotFoundException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Ensure the required file or package exists.[/]",
-            InvalidOperationException when ex.Message.Contains("git") => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.IconInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Try running 'git init' or check your git configuration.[/]",
+            DirectoryNotFoundException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.SymInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Did you mean to run 'pksmith new' first?[/]",
+            UnauthorizedAccessException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.SymInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Check file permissions or run with appropriate access rights.[/]",
+            FileNotFoundException => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.SymInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Ensure the required file or package exists.[/]",
+            InvalidOperationException when ex.Message.Contains("git") => $"[{StyleManager.InfoColor.ToMarkup()}]{StyleManager.SymInfo} Hint:[/] [{StyleManager.MutedColor.ToMarkup()}]Try running 'git init' or check your git configuration.[/]",
             _ => null
         };
 
@@ -144,7 +144,7 @@ static class Program
                 new Panel(new Markup(hint))
                 {
                     Border = BoxBorder.Rounded,
-                    BorderStyle = StyleManager.Info,
+                    BorderStyle = StyleManager.StatusInfo,
                     Padding = new Padding(1, 0, 1, 0)
                 }
             );

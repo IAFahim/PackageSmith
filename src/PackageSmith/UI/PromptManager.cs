@@ -28,14 +28,14 @@ public static class PromptManager
             // Validate
             if (string.IsNullOrWhiteSpace(result))
             {
-                AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Package name cannot be empty[/]");
+                AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Package name cannot be empty[/]");
                 continue;
             }
 
             var parts = result.Split('.');
             if (parts.Length < 2)
             {
-                AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Must have at least 2 parts separated by dots (e.g., com.company)[/]");
+                AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Must have at least 2 parts separated by dots (e.g., com.company)[/]");
                 continue;
             }
 
@@ -43,19 +43,19 @@ public static class PromptManager
             {
                 if (string.IsNullOrWhiteSpace(part))
                 {
-                    AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Each part must be non-empty[/]");
+                    AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Each part must be non-empty[/]");
                     continue;
                 }
 
                 if (!char.IsLetter(part[0]))
                 {
-                    AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.IconError} Each part must start with a letter[/]");
+                    AnsiConsole.MarkupLine($"[{StyleManager.ErrorColor.ToMarkup()}]{StyleManager.SymError} Each part must start with a letter[/]");
                     continue;
                 }
             }
 
             // Show validation feedback
-            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Valid package name[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Valid package name[/]");
             AnsiConsole.WriteLine();
 
             return result;
@@ -79,7 +79,7 @@ public static class PromptManager
                 .PromptStyle(StyleManager.Command)
         );
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Display name set[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Display name set[/]");
         AnsiConsole.WriteLine();
 
         return result;
@@ -132,7 +132,7 @@ public static class PromptManager
 
         var result = AnsiConsole.Prompt(selector);
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Selected: {choices[result].Label}[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Selected: {choices[result].Label}[/]");
         AnsiConsole.WriteLine();
 
         return result;
@@ -159,7 +159,7 @@ public static class PromptManager
         var selectionResult = AnsiConsole.Prompt(selector);
         var count = selectionResult.Count();
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Selected {count} option(s)[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Selected {count} option(s)[/]");
         AnsiConsole.WriteLine();
 
         return selectionResult.ToList();
@@ -170,13 +170,13 @@ public static class PromptManager
         AnsiConsole.WriteLine();
 
         var result = AnsiConsole.Confirm(
-            $"[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.IconWarning} {message}[/]",
+            $"[{StyleManager.WarningColor.ToMarkup()}]{StyleManager.SymWarning} {message}[/]",
             defaultValue
         );
 
         AnsiConsole.MarkupLine(result
-            ? $"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.IconSuccess} Confirmed[/]"
-            : $"[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.IconInfo} Cancelled[/]");
+            ? $"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Confirmed[/]"
+            : $"[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.SymInfo} Cancelled[/]");
         AnsiConsole.WriteLine();
 
         return result;
