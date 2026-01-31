@@ -2,8 +2,6 @@ using Spectre.Console;
 using Spectre.Console.Rendering;
 using PackageSmith.Core.Templates;
 using PackageSmith.Core.Configuration;
-using PackageSmith.Core.Generation;
-using PackageSmith.Core.AssemblyDefinition;
 
 namespace PackageSmith.UI;
 
@@ -16,36 +14,46 @@ public static class LiveSplitSelector
             .OrderBy(t => t.DisplayName)
             .ToList();
 
-        if (templates.Count == 0)
-            return null;
-
-        var selectedIndex = 0;
+        if (templates.Count == 0) return null;
 
         AnsiConsole.Cursor.Hide();
+        string? result = null;
+        int index = 0;
+
         try
         {
-            AnsiConsole.Live(CreateDisplay(templates, selectedIndex, config))
+            // Removed VerticalOverflow.Ellipsis to prevent top-cropping
+            AnsiConsole.Live(CreateLayout(templates, index))
+                .AutoClear(false)
                 .Start(ctx =>
                 {
                     while (true)
                     {
-                        var key = Console.ReadKey(true);
+                        ctx.UpdateTarget(CreateLayout(templates, index));
 
-                        switch (key.Key)
+                        if (Console.KeyAvailable)
                         {
-                            case ConsoleKey.UpArrow:
-                                selectedIndex = (selectedIndex - 1 + templates.Count) % templates.Count;
-                                ctx.UpdateTarget(CreateDisplay(templates, selectedIndex, config));
+                            var key = Console.ReadKey(true).Key;
+
+                            if (key == ConsoleKey.UpArrow)
+                            {
+                                index = (index - 1 + templates.Count) % templates.Count;
+                            }
+                            else if (key == ConsoleKey.DownArrow)
+                            {
+                                index = (index + 1) % templates.Count;
+                            }
+                            else if (key == ConsoleKey.Enter)
+                            {
+                                result = templates[index].Name;
                                 break;
-                            case ConsoleKey.DownArrow:
-                                selectedIndex = (selectedIndex + 1) % templates.Count;
-                                ctx.UpdateTarget(CreateDisplay(templates, selectedIndex, config));
+                            }
+                            else if (key == ConsoleKey.Escape)
+                            {
                                 break;
-                            case ConsoleKey.Enter:
-                                return templates[selectedIndex].Name;
-                            case ConsoleKey.Escape:
-                                return null;
+                            }
                         }
+                        Thread.Sleep(20);
                     }
                 });
         }
@@ -54,114 +62,105 @@ public static class LiveSplitSelector
             AnsiConsole.Cursor.Show();
         }
 
-        return null; // Should not reach here
+        return result;
     }
 
-    private static IRenderable CreateDisplay(List<TemplateMetadata> templates, int selectedIndex, PackageSmithConfig config)
+    private static IRenderable CreateLayout(List<TemplateMetadata> templates, int index)
     {
-        var layout = new Layout("Root")
-            .SplitColumns(
-                new Layout("Left").Size(30),
-                new Layout("Right").Size(50)
-            );
+        // Grid Configuration
+        var grid = new Grid();
+        grid.AddColumn(new GridColumn().Width(35).NoWrap()); // Fixed Menu Width
+        grid.AddColumn(new GridColumn().Width(2));           // Padding
+        grid.AddColumn(new GridColumn());                    // Flexible Preview
 
-        var menu = CreateMenuPanel(templates, selectedIndex);
-        var preview = CreatePreviewPanel(templates[selectedIndex], config);
+        // Fixed height to prevent jumping/cropping
+        var fixedHeight = 16;
 
-        layout["Left"].Update(menu);
-        layout["Right"].Update(preview);
+        var menuPanel = CreateMenuPanel(templates, index, fixedHeight);
+        var previewPanel = CreatePreviewPanel(templates[index], fixedHeight);
 
-        var footer = new Rows(
-            layout,
-            new Markup($"\n[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymInfo} Up/Down Navigate • Enter Select • Esc Cancel[/]\n")
+        grid.AddRow(menuPanel, Text.Empty, previewPanel);
+
+        // Footer
+        var footer = new Markup($"[{StyleManager.Tertiary.ToMarkup()}]{StyleManager.SymInfo} Up/Down Navigate • Enter Select • Esc Cancel[/]");
+
+        return new Rows(
+            grid,
+            new Padder(footer, new Padding(0, 1, 0, 0))
         );
-
-        return footer;
     }
 
-    private static Panel CreateMenuPanel(List<TemplateMetadata> templates, int selectedIndex)
+    private static Panel CreateMenuPanel(List<TemplateMetadata> templates, int index, int height)
     {
-        var rows = new List<IRenderable>();
+        var menuItems = new List<IRenderable>();
 
         for (int i = 0; i < templates.Count; i++)
         {
             var t = templates[i];
-            var isSelected = i == selectedIndex;
-
-            if (isSelected)
+            if (i == index)
             {
-                var bar = new Markup($"[{StyleManager.Primary.ToMarkup()}]{StyleManager.SymArrow} {t.DisplayName}[/]");
-                rows.Add(bar);
+                menuItems.Add(new Markup($"[{StyleManager.Primary.ToMarkup()}]{StyleManager.SymArrow} [bold]{t.DisplayName}[/][/]"));
             }
             else
             {
-                var text = new Markup($"[{StyleManager.Dim.ToMarkup()}]  {t.DisplayName}[/]");
-                rows.Add(text);
+                menuItems.Add(new Markup($"[{StyleManager.Tertiary.ToMarkup()}]  {t.DisplayName}[/]"));
             }
         }
 
-        var column = new Rows(rows);
-
-        return new Panel(column)
-            .Header($"[{StyleManager.Primary.ToMarkup()}]Select Template[/]")
+        return new Panel(new Rows(menuItems))
+            .Header($"[{StyleManager.Primary.ToMarkup()}]Templates[/]")
+            .HeaderAlignment(Justify.Left)
             .BorderStyle(new Style(StyleManager.Primary))
             .Border(BoxBorder.Rounded)
             .Padding(1, 0, 1, 0);
     }
 
-    private static Panel CreatePreviewPanel(TemplateMetadata template, PackageSmithConfig config)
+    private static Panel CreatePreviewPanel(TemplateMetadata current, int height)
     {
+        // Calculate Package Name
+        var rawName = current.Name.Replace("-", ".");
+        var prettyName = ToPascalCase(current.Name);
+        var packageName = $"com.example.{rawName}";
+
+        // Build Tree
+        var tree = new Tree($"[{StyleManager.Secondary.ToMarkup()}]{packageName}/[/]");
+        tree.Style = new Style(StyleManager.Tertiary);
+
+        // Standard Files
+        tree.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]package.json[/]");
+        tree.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]README.md[/]");
+
+        // Modules
+        foreach (var mod in current.Modules)
+        {
+            string folderName = mod;
+            bool isStandardFolder = mod is "Runtime" or "Editor" or "Tests" or "Samples";
+            if (!isStandardFolder) folderName = $"{prettyName}.{mod}";
+
+            var node = tree.AddNode($"[{StyleManager.Secondary.ToMarkup()}]{folderName}/[/]");
+            node.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]{folderName}.asmdef[/]");
+        }
+
         var content = new Rows(
-            new Markup($"\n[{StyleManager.Primary.ToMarkup()}]{template.DisplayName}[/]\n"),
-            new Markup($"[{StyleManager.Content.ToMarkup()}]{template.Description}[/]\n"),
-            new Markup($"\n[{StyleManager.Dim.ToMarkup()}]Structure:[/]\n"),
-            CreateFileTree(template),
-            new Markup($"\n")
+            new Markup($"\n[{StyleManager.Primary.ToMarkup()}][bold]{current.DisplayName}[/][/]\n"),
+            new Markup($"[{StyleManager.Secondary.ToMarkup()}]{current.Description}[/]\n"),
+            new Markup(""),
+            new Markup($"[{StyleManager.Tertiary.ToMarkup()}]Structure:[/]\n"),
+            tree
         );
 
         return new Panel(content)
             .Header($"[{StyleManager.Primary.ToMarkup()}]Preview[/]")
-            .BorderStyle(new Style(StyleManager.Dim))
+            .HeaderAlignment(Justify.Left)
+            .BorderStyle(new Style(StyleManager.Tertiary))
             .Border(BoxBorder.Rounded)
             .Padding(1, 0, 1, 0);
     }
 
-    private static Tree CreateFileTree(TemplateMetadata template)
+    private static string ToPascalCase(string input)
     {
-        var packageName = $"com.example.{template.Name}";
-        var asmdefRoot = NamespaceGenerator.GetAsmDefRootFromPackageName(packageName);
-
-        var root = new Tree($"[{StyleManager.Content.ToMarkup()}]{packageName}/[/]");
-
-        // Root files
-        root.AddNode($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.TreeBranch} package.json[/]");
-        root.AddNode($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.TreeEnd} README.md[/]");
-
-        // Modules
-        if (template.Modules.Count > 0)
-        {
-            var modulesNode = root.AddNode($"[{StyleManager.Content.ToMarkup()}]{StyleManager.TreeBranch} Modules[/]");
-            var moduleList = template.Modules.ToList();
-
-            for (int i = 0; i < moduleList.Count; i++)
-            {
-                var isLast = i == moduleList.Count - 1;
-                var prefix = isLast ? StyleManager.TreeEnd : StyleManager.TreeBranch;
-                var modName = moduleList[i] switch
-                {
-                    "Data" => $"{asmdefRoot}.Data",
-                    "Authoring" => $"{asmdefRoot}.Authoring",
-                    "Runtime" => $"{asmdefRoot}.Runtime",
-                    "Systems" => $"{asmdefRoot}.Systems",
-                    "Editor" => $"{asmdefRoot}.Editor",
-                    "Debug" => $"{asmdefRoot}.Debug",
-                    "Tests" => $"{asmdefRoot}.Tests",
-                    _ => moduleList[i]
-                };
-                modulesNode.AddNode($"[{StyleManager.Dim.ToMarkup()}]{prefix} {modName}/[/]");
-            }
-        }
-
-        return root;
+        if (string.IsNullOrEmpty(input)) return input;
+        var parts = input.Split(new[] { '-', '.' }, StringSplitOptions.RemoveEmptyEntries);
+        return string.Join("", parts.Select(p => char.ToUpper(p[0]) + (p.Length > 1 ? p.Substring(1) : "")));
     }
 }

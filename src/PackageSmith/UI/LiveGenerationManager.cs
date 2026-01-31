@@ -52,7 +52,7 @@ public static class LiveGenerationManager
                 }
             });
 
-        AnsiConsole.MarkupLine($"\n[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Package created successfully[/]");
+        AnsiConsole.MarkupLine($"\n[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Package created successfully[/]");
         AnsiConsole.WriteLine();
 
         return true;
@@ -71,7 +71,7 @@ public static class LiveGenerationManager
             var relativePath = GetRelativePath(dir.Path, packagePath);
             var isCreated = createdDirectories.Contains(dir.Path);
             var color = isCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
-            var prefix = isCreated ? StyleManager.SymSuccess : StyleManager.SymBullet;
+            var prefix = isCreated ? StyleManager.SymTick : StyleManager.SymBullet;
 
             var node = root.AddNode($"[{color.ToMarkup()}]{prefix} {relativePath}/[/]");
 
@@ -81,7 +81,7 @@ public static class LiveGenerationManager
                 var fileName = Path.GetFileName(file.Path);
                 var fileCreated = createdFiles.Contains(file.Path);
                 var fileColor = fileCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
-                var filePrefix = fileCreated ? StyleManager.SymSuccess : StyleManager.SymBullet;
+                var filePrefix = fileCreated ? StyleManager.SymTick : StyleManager.SymBullet;
 
                 node.AddNode($"[{fileColor.ToMarkup()}]{filePrefix} {fileName}[/]");
             }
@@ -98,7 +98,7 @@ public static class LiveGenerationManager
             var fileName = Path.GetFileName(file.Path);
             var fileCreated = createdFiles.Contains(file.Path);
             var fileColor = fileCreated ? StyleManager.SuccessColor : StyleManager.MutedColor;
-            var filePrefix = fileCreated ? StyleManager.SymSuccess : StyleManager.SymBullet;
+            var filePrefix = fileCreated ? StyleManager.SymTick : StyleManager.SymBullet;
 
             root.AddNode($"[{fileColor.ToMarkup()}]{filePrefix} {fileName}[/]");
         }

@@ -55,7 +55,7 @@ public static class PromptManager
             }
 
             // Show validation feedback
-            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Valid package name[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Valid package name[/]");
             AnsiConsole.WriteLine();
 
             return result;
@@ -79,7 +79,7 @@ public static class PromptManager
                 .PromptStyle(StyleManager.Command)
         );
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Display name set[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Display name set[/]");
         AnsiConsole.WriteLine();
 
         return result;
@@ -132,7 +132,7 @@ public static class PromptManager
 
         var result = AnsiConsole.Prompt(selector);
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Selected: {choices[result].Label}[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Selected: {choices[result].Label}[/]");
         AnsiConsole.WriteLine();
 
         return result;
@@ -159,7 +159,7 @@ public static class PromptManager
         var selectionResult = AnsiConsole.Prompt(selector);
         var count = selectionResult.Count();
 
-        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Selected {count} option(s)[/]");
+        AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Selected {count} option(s)[/]");
         AnsiConsole.WriteLine();
 
         return selectionResult.ToList();
@@ -175,7 +175,7 @@ public static class PromptManager
         );
 
         AnsiConsole.MarkupLine(result
-            ? $"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Confirmed[/]"
+            ? $"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Confirmed[/]"
             : $"[{StyleManager.MutedColor.ToMarkup()}]{StyleManager.SymInfo} Cancelled[/]");
         AnsiConsole.WriteLine();
 

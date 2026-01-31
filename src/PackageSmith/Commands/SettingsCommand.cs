@@ -41,7 +41,6 @@ public sealed class SettingsCommand : Command<SettingsCommand.Settings>
 
     private int RunWizard()
     {
-        AnsiConsole.Clear();
         PrintHeader();
 
         var config = new PackageSmithConfig

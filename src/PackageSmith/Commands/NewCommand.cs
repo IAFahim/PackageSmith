@@ -140,7 +140,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
             }
 
             LayoutManager.PrintFooter();
-            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymSuccess} Package created at:[/] [{StyleManager.PathColor.ToMarkup()}]{template.OutputPath}/{template.PackageName}[/]");
+            AnsiConsole.MarkupLine($"[{StyleManager.SuccessColor.ToMarkup()}]{StyleManager.SymTick} Package created at:[/] [{StyleManager.PathColor.ToMarkup()}]{template.OutputPath}/{template.PackageName}[/]");
             return 0;
         }
 
@@ -410,7 +410,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
             foreach (var file in filesInDir)
             {
                 var fileName = Path.GetFileName(file.Path);
-                node.AddNode($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymBullet} {fileName}[/]");
+                node.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]{StyleManager.SymBullet} {fileName}[/]");
             }
         }
 
@@ -424,7 +424,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
         foreach (var file in rootFiles)
         {
             var fileName = Path.GetFileName(file.Path);
-            root.AddNode($"[{StyleManager.Dim.ToMarkup()}]{StyleManager.SymBullet} {fileName}[/]");
+            root.AddNode($"[{StyleManager.Tertiary.ToMarkup()}]{StyleManager.SymBullet} {fileName}[/]");
         }
 
         AnsiConsole.Write(root);
