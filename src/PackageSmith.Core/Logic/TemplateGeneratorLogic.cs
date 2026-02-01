@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using PackageSmith.Data.State;
 
 namespace PackageSmith.Core.Logic;
 
@@ -140,6 +141,52 @@ public static class TemplateGeneratorLogic
 			processedFiles++;
 		}
 
+		return true;
+	}
+
+	// PURE: Returns virtual files instead of writing to disk (for Transactional I/O)
+	public static bool TryGenerateState(
+		string templatePath,
+		string packageName,
+		string displayName,
+		string description,
+		string authorName,
+		string unityVersion,
+		out VirtualFileState[] virtualFiles)
+	{
+		virtualFiles = Array.Empty<VirtualFileState>();
+		if (!Directory.Exists(templatePath)) return false;
+
+		var filesList = new List<VirtualFileState>();
+		var sourceFiles = Directory.EnumerateFiles(templatePath, "*", SearchOption.AllDirectories);
+
+		foreach (var file in sourceFiles)
+		{
+			if (Path.GetFileName(file).StartsWith(".")) continue;
+
+			var relativePath = Path.GetRelativePath(templatePath, file);
+			var destPath = DetokenizePath(relativePath, packageName);
+			string content;
+
+			if (Path.GetExtension(file).Equals(".asmdef", StringComparison.OrdinalIgnoreCase))
+			{
+				content = ProcessAsmDefFile(file, packageName, displayName, description, authorName, unityVersion);
+			}
+			else
+			{
+				var raw = File.ReadAllText(file);
+				content = DetokenizeString(raw, packageName, displayName, description, authorName, unityVersion);
+			}
+
+			filesList.Add(new VirtualFileState
+			{
+				Path = destPath,
+				Content = content,
+				ContentLength = content.Length
+			});
+		}
+
+		virtualFiles = filesList.ToArray();
 		return true;
 	}
 

@@ -23,6 +23,7 @@ public struct PackageState
 	public TemplateType SelectedTemplate;
 	public LicenseType License;
 	public List<PackageDependency> Dependencies;
+	public string TemplatePath;
 
 	public override readonly string ToString() => $"[Package] {PackageName} ({DisplayName})";
 }

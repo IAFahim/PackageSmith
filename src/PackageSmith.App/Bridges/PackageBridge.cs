@@ -1,25 +1,97 @@
+using System;
+using System.IO;
 using PackageSmith.Data.Config;
 using PackageSmith.Data.State;
+using PackageSmith.Data.Types;
 using PackageSmith.Core.Pipelines;
+using PackageSmith.Core.Interfaces;
+using PackageSmith.Core.Logic;
+using PackageSmith.Core.Extensions;
 
 namespace PackageSmith.App.Bridges;
 
 public sealed class PackageBridge : IPackageBridge
 {
 	private readonly BuildPipeline _buildPipeline;
-	private readonly FileSystemPipeline _fileSystemPipeline;
 
 	public PackageBridge()
 	{
 		_buildPipeline = new BuildPipeline();
-		_fileSystemPipeline = new FileSystemPipeline();
 	}
 
 	public bool TryCreate(in PackageState package)
 	{
-		var bridge = new ConfigBridge();
-		var config = bridge.TryLoad(out var c) ? c : bridge.GetDefault();
+		var configBridge = new ConfigBridge();
+		var config = configBridge.TryLoad(out var c) ? c : configBridge.GetDefault();
 
-		return _buildPipeline.TryGenerate(in package, in config, out var layout);
+		VirtualFileState[] files;
+		bool success;
+
+		// BRANCH: Template vs Standard
+		if (package.SelectedTemplate != TemplateType.None && !string.IsNullOrEmpty(package.TemplatePath))
+		{
+			success = TemplateGeneratorLogic.TryGenerateState(
+				package.TemplatePath,
+				package.PackageName,
+				package.DisplayName,
+				package.Description,
+				package.CompanyName,
+				package.UnityVersion,
+				out files);
+		}
+		else
+		{
+			success = _buildPipeline.TryGenerate(in package, in config, out _, out files);
+		}
+
+		if (!success) return false;
+
+		// Transactional Write
+		TransactionLogic.CreateTransaction(package.OutputPath, out var tx);
+		if (!tx.TryBegin()) return false;
+
+		foreach (var file in files)
+		{
+			var relative = Path.IsPathRooted(file.Path)
+				? Path.GetRelativePath(package.OutputPath, file.Path)
+				: file.Path;
+
+			if (!tx.TryWriteFile(relative, file.Content))
+			{
+				tx.TryRollback();
+				return false;
+			}
+		}
+
+		return tx.TryCommit();
+	}
+
+	public bool TryCreateFromTemplate(string templatePath, in PackageState package)
+	{
+		if (!TemplateGeneratorLogic.TryGenerateState(
+			templatePath,
+			package.PackageName,
+			package.DisplayName,
+			package.Description,
+			package.CompanyName,
+			package.UnityVersion,
+			out var files))
+		{
+			return false;
+		}
+
+		TransactionLogic.CreateTransaction(package.OutputPath, out var tx);
+		if (!tx.TryBegin()) return false;
+
+		foreach (var file in files)
+		{
+			if (!tx.TryWriteFile(file.Path, file.Content))
+			{
+				tx.TryRollback();
+				return false;
+			}
+		}
+
+		return tx.TryCommit();
 	}
 }

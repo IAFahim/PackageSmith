@@ -12,16 +12,17 @@ namespace PackageSmith.Core.Pipelines;
 
 public sealed class BuildPipeline : IPackageGenerator
 {
-	public bool TryGenerate(in PackageState package, in AppConfig config, out PackageLayoutState layout)
+	public bool TryGenerate(in PackageState package, in AppConfig config, out PackageLayoutState layout, out VirtualFileState[] files)
 	{
 		layout = default;
+		files = Array.Empty<VirtualFileState>();
 
 		package.TryValidate(out var isValid);
 		if (!isValid) return false;
 
 		var hasSubAssemblies = package.HasSubAssemblies();
 		var directories = GenerateDirectories(in package, hasSubAssemblies);
-		var files = GenerateFiles(in package, in config, hasSubAssemblies);
+		files = GenerateFiles(in package, in config, hasSubAssemblies);
 
 		layout = new PackageLayoutState
 		{

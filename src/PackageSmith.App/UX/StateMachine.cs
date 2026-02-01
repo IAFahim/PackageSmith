@@ -195,6 +195,9 @@ public static class StateMachine
 
 			AnsiConsole.MarkupLine($"[green]Success![/] Harvested {count} files.");
 			AnsiConsole.MarkupLine($"[dim]Template saved to:[/] [blue]{templatesDir}[/]");
+
+			OsLogic.TryOpenFolder(templatesDir, out var opened);
+			if (opened) AnsiConsole.MarkupLine("[dim]Opening template location...[/]");
 		}
 		else
 		{

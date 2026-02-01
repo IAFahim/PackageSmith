@@ -5,5 +5,5 @@ namespace PackageSmith.Core.Interfaces;
 
 public interface IPackageGenerator
 {
-	bool TryGenerate(in PackageState package, in AppConfig config, out PackageLayoutState layout);
+	bool TryGenerate(in PackageState package, in AppConfig config, out PackageLayoutState layout, out VirtualFileState[] files);
 }

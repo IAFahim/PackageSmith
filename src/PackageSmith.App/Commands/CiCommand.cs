@@ -1,7 +1,11 @@
 using System;
 using System.IO;
+using System.Linq;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using PackageSmith.Core.Logic;
+using PackageSmith.Core.Extensions;
+using PackageSmith.Data.State;
 
 namespace PackageSmith.App.Commands;
 
@@ -21,100 +25,44 @@ public sealed class CiCommand : Command<CiCommand.Settings>
 		var action = settings.Action ?? "generate";
 		var outputPath = settings.OutputPath ?? ".";
 
-		return action.ToLowerInvariant() switch
+		if (action.ToLowerInvariant() != "generate") return 1;
+
+		AnsiConsole.MarkupLine("[dim]Analyzing package structure...[/]");
+
+		if (!Directory.Exists(outputPath))
 		{
-			"generate" => GenerateWorkflows(outputPath),
-			_ => 1
-		};
-	}
+			AnsiConsole.MarkupLine($"[red]Error:[/] Path {outputPath} does not exist.");
+			return 1;
+		}
 
-	private int GenerateWorkflows(string outputPath)
-	{
-		AnsiConsole.MarkupLine("[dim]Generating CI/CD workflows...[/]");
+		var realFiles = Directory.GetFiles(outputPath, "*", SearchOption.AllDirectories);
+		var virtualFiles = realFiles.Select(f => new VirtualFileState
+		{
+			Path = Path.GetRelativePath(outputPath, f)
+		}).ToArray();
 
-		var workflowsDir = Path.Combine(outputPath, ".github", "workflows");
-		Directory.CreateDirectory(workflowsDir);
+		var layout = new PackageLayoutState { FileCount = virtualFiles.Length };
+		AnalyzerLogic.AnalyzeLayout(in layout, virtualFiles, out var caps);
 
-		var testWorkflow = @"name: Test // Generate test workflow
+		AnsiConsole.MarkupLine($"[dim]Detected capabilities:[/] {caps}");
 
-on:
-  push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
+		if (caps.TryGenerateWorkflow(out var yaml))
+		{
+			var workflowsDir = Path.Combine(outputPath, ".github", "workflows");
+			Directory.CreateDirectory(workflowsDir);
 
-jobs:
-  test:
-    name: Test on Unity 2022.3
-    runs-on: ubuntu-latest
-    container:
-      image: unityci/editor:ubuntu-2022.3-windows-mono-1
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+			var path = Path.Combine(workflowsDir, "test.yml");
+			File.WriteAllText(path, yaml);
 
-      - name: Cache Library
-        uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-2022.3-{{hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**')}}
-          restore-keys: |
-            Library-2022.3-
-            Library-
-
-      - name: Run Tests
-        run: |
-          unity-editor \
-            -runTests \
-            -testPlatformEditMode \
-            -testResultsResults/EditModeResults.xml \
-            -batchmode \
-            -projectPath .
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Test Results
-          path: Results/EditModeResults.xml
-";
-
-		var testPath = Path.Combine(workflowsDir, "test.yml");
-		File.WriteAllText(testPath, testWorkflow);
-
-		var releaseWorkflow = @"name: Release // Generate release workflow
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Generate Release Notes
-        id: release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-";
-
-		var releasePath = Path.Combine(workflowsDir, "release.yml");
-		File.WriteAllText(releasePath, releaseWorkflow);
-
-		AnsiConsole.MarkupLine($"[green]Success:[/] Generated 2 workflows in {workflowsDir}");
-		AnsiConsole.MarkupLine("  • [cyan]test.yml[/] - Run Unity tests on push/PR");
-		AnsiConsole.MarkupLine("  • [cyan]release.yml[/] - Create GitHub release on tag");
+			AnsiConsole.MarkupLine($"[green]Success:[/] Generated smart workflow at {path}");
+			if (caps.HasPlayModeTests) AnsiConsole.MarkupLine("  • [cyan]PlayMode[/] enabled");
+			if (caps.HasEditModeTests) AnsiConsole.MarkupLine("  • [cyan]EditMode[/] enabled");
+			if (caps.HasNativePlugins) AnsiConsole.MarkupLine("  • [yellow]Native Plugins[/] detected");
+		}
+		else
+		{
+			AnsiConsole.MarkupLine("[yellow]Warning:[/] Could not generate workflow.");
+		}
 
 		return 0;
 	}
