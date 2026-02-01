@@ -24,6 +24,9 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
 		[CommandOption("-t|--template")]
 		public string? TemplateName { get; init; }
+
+		[CommandOption("-l|--link")]
+		public bool LinkToUnity { get; init; }
 	}
 
 	public override int Execute(CommandContext context, Settings settings)
@@ -75,6 +78,26 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 		GitLogic.TryInitGit(fullOutputPath, out var gitSuccess);
 		if (gitSuccess) AnsiConsole.MarkupLine("[dim]Git initialized[/]");
 
+		// Link to Unity project if requested
+		if (settings.LinkToUnity)
+		{
+			if (UnityLinkLogic.TryFindUnityProject(fullOutputPath, out var unityPath))
+			{
+				if (UnityLinkLogic.TryLinkToUnityProject(unityPath, fullOutputPath, packageName))
+				{
+					AnsiConsole.MarkupLine($"[green]Linked:[/] Added to Unity project at {unityPath}");
+				}
+				else
+				{
+					AnsiConsole.MarkupLine("[yellow]Warning:[/] Failed to link to Unity project");
+				}
+			}
+			else
+			{
+				AnsiConsole.MarkupLine("[yellow]Warning:[/] No Unity project found in parent directories");
+			}
+		}
+
 		return 0;
 	}
 
@@ -111,6 +134,26 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
 		AnsiConsole.MarkupLine($"[green]Success:[/] Package created");
 		if (gitSuccess) AnsiConsole.MarkupLine("[dim]Git initialized[/]");
+
+		// Link to Unity project if requested
+		if (settings.LinkToUnity)
+		{
+			if (UnityLinkLogic.TryFindUnityProject(fullPath, out var unityPath))
+			{
+				if (UnityLinkLogic.TryLinkToUnityProject(unityPath, fullPath, package.PackageName))
+				{
+					AnsiConsole.MarkupLine($"[green]Linked:[/] Added to Unity project at {unityPath}");
+				}
+				else
+				{
+					AnsiConsole.MarkupLine("[yellow]Warning:[/] Failed to link to Unity project");
+				}
+			}
+			else
+			{
+				AnsiConsole.MarkupLine("[yellow]Warning:[/] No Unity project found in parent directories");
+			}
+		}
 
 		return 0;
 	}

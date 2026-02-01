@@ -105,6 +105,22 @@ public sealed class BuildPipeline : IPackageGenerator
 			Content = new string(GitLogic.GenerateGitIgnore())
 		});
 
+		// 1.5. License and Changelog
+		if (package.License != LicenseType.None)
+		{
+			files.Add(new VirtualFileState
+			{
+				Path = new string(System.IO.Path.Combine(basePath, "LICENSE.md")),
+				Content = new string(GitLogic.GenerateLicense(package.License, DateTime.Now.Year.ToString(), package.CompanyName))
+			});
+		}
+
+		files.Add(new VirtualFileState
+		{
+			Path = new string(System.IO.Path.Combine(basePath, "CHANGELOG.md")),
+			Content = new string(GitLogic.GenerateChangelog(package.PackageName, "1.0.0"))
+		});
+
 		// 2. Generate AsmDefs
 		if (package.HasModule(PackageModuleType.Runtime) && !hasSubAssemblies)
 		{
@@ -235,6 +251,16 @@ public sealed class BuildPipeline : IPackageGenerator
 
 	private static string GeneratePackageManifest(in PackageState package, in AppConfig config)
 	{
+		GitLogic.TryGetGitConfig(out var gitName, out var gitEmail);
+		var authorName = string.IsNullOrEmpty(gitName) || gitName == "Unknown" ? config.CompanyName.ToString() : gitName;
+		var authorEmail = gitEmail == "unknown@local" ? "" : gitEmail;
+
+		var authorObj = string.IsNullOrEmpty(authorEmail)
+			? $"{{\"name\": \"{authorName}\"}}"
+			: $"{{\"name\": \"{authorName}\", \"email\": \"{authorEmail}\"}}";
+
+		var samples = package.HasModule(PackageModuleType.Samples) ? ",\n\t\"samples\": [{{\"displayName\": \"Demo\", \"path\": \"Samples~/Demo\"}}]" : "";
+
 		return $$"""
 		{
 			"name": "{{package.PackageName.ToString()}}",
@@ -242,7 +268,7 @@ public sealed class BuildPipeline : IPackageGenerator
 			"displayName": "{{package.DisplayName.ToString()}}",
 			"description": "{{package.Description.ToString()}}",
 			"unity": "{{config.DefaultUnityVersion.ToString()}}",
-			"author": "{{config.CompanyName.ToString()}}"
+			"author": {{authorObj}}{{samples}}
 		}
 		""";
 	}
