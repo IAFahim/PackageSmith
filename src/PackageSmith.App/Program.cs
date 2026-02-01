@@ -32,7 +32,10 @@ static class Program
 			config.SetApplicationName("pksmith");
 
 			config.AddCommand<NewCommand>("new")
-				.WithDescription("Create a new Unity package from template");
+				.WithDescription("Create a new Unity package");
+
+			config.AddCommand<TemplatesCommand>("templates")
+				.WithDescription("List available templates");
 
 			config.AddCommand<SettingsCommand>("settings")
 				.WithDescription("Configure global package settings");

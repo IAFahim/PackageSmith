@@ -41,7 +41,76 @@ public static class StateMachine
 	{
 		AnsiConsole.MarkupLine("[bold white]New Package[/]\n");
 
+		// Ask user to choose creation method
+		var method = AnsiConsole.Prompt(
+			new SelectionPrompt<string>()
+				.AddChoices(new[] { "From Template", "From Scratch" }));
+
+		if (method == "From Template")
+		{
+			NewPackageFromTemplateFlow();
+			return;
+		}
+
+		// Original flow - from scratch
+		NewPackageFromScratchFlow();
+	}
+
+	private static void NewPackageFromTemplateFlow()
+	{
+		AnsiConsole.MarkupLine("\n[dim]Create from harvested template[/]\n");
+
 		var name = AnsiConsole.Ask<string>("[dim]Package name[/] (e.g. [cyan]com.studio.tool[/]):");
+
+		// Get available templates
+		var templatesDir = Path.Combine(GetAppDataPath(), "PackageSmith", "Templates");
+		var templateName = "From Scratch"; // default
+
+		if (Directory.Exists(templatesDir))
+		{
+			var templates = Directory.GetDirectories(templatesDir)
+				.Select(Path.GetFileName)
+				.OrderBy(x => x)
+				.ToList();
+
+			if (templates.Count > 0)
+			{
+				templateName = AnsiConsole.Prompt(
+					new SelectionPrompt<string>()
+						.Title("Select template:")
+						.AddChoices(templates));
+			}
+			else
+			{
+				AnsiConsole.MarkupLine("\n[dim]No templates found. Creating from scratch...[/]\n");
+				NewPackageFromScratchFlow(name);
+				return;
+			}
+		}
+
+		var templatePath = Path.Combine(templatesDir, templateName);
+		var outputPath = Path.Combine(Environment.CurrentDirectory, name);
+
+		if (!TemplateGeneratorLogic.TryGenerateFromTemplate(templatePath, outputPath, name, out var fileCount))
+		{
+			AnsiConsole.MarkupLine("\n[red]Error:[/] Failed to generate from template");
+			Console.ReadLine();
+			return;
+		}
+
+		GitLogic.TryInitGit(outputPath, out var gitInit);
+
+		AnsiConsole.MarkupLine($"\n[green]Success:[/] Created {fileCount} files from '[cyan]{templateName}[/]'");
+		AnsiConsole.MarkupLine(gitInit ? "[green]git initialized[/]" : "[dim]git init skipped[/]");
+		AnsiConsole.MarkupLine("\n[bold green]Done[/]. Press Enter.");
+		Console.ReadLine();
+	}
+
+	private static void NewPackageFromScratchFlow(string? name = null)
+	{
+		AnsiConsole.MarkupLine("\n[dim]Create from scratch[/]\n");
+
+		name ??= AnsiConsole.Ask<string>("[dim]Package name[/] (e.g. [cyan]com.studio.tool[/]):");
 		var parts = name.Split('.');
 		var display = AnsiConsole.Ask<string>("[dim]Display name[/]:", parts.Length > 0 ? parts[^1] : name);
 
@@ -109,7 +178,6 @@ public static class StateMachine
 
 		if (TemplateHarvesterLogic.TryHarvest(sourcePath, templatesDir, packageName, out var count))
 		{
-			// Save manifest
 			var manifestPath = Path.Combine(templatesDir, ".template.json");
 			var manifest = $"{{\"id\":\"{templateName}\",\"sourcePackage\":\"{packageName}\",\"fileCount\":{count}}}";
 			File.WriteAllText(manifestPath, manifest);
@@ -160,7 +228,7 @@ public static class StateMachine
 			{
 				var name = Path.GetFileName(t);
 				var manifestPath = Path.Combine(t, ".template.json");
-				var fileCount = Directory.GetFiles(t, "*", SearchOption.AllDirectories).Length;
+				var filesCount = Directory.GetFiles(t, "*", SearchOption.AllDirectories).Length;
 				var source = "Unknown";
 
 				if (File.Exists(manifestPath))
@@ -171,67 +239,49 @@ public static class StateMachine
 						if (manifest.RootElement.TryGetProperty("sourcePackage", out var src))
 							source = src.GetString() ?? "Unknown";
 						if (manifest.RootElement.TryGetProperty("fileCount", out var fc))
-							fileCount = fc.GetInt32();
+							filesCount = fc.GetInt32();
 					}
 					catch { /* Ignore */ }
 				}
 
-				table.AddRow($"[cyan]{name}[/]", $"[white]{fileCount}[/]", $"[dim]{source}[/]");
+				table.AddRow($"[cyan]{name}[/]", $"[white]{filesCount}[/]", $"[dim]{source}[/]");
 			}
 
 			AnsiConsole.Write(table);
 
 			var choice = AnsiConsole.Prompt(
 				new SelectionPrompt<string>()
-					.AddChoices(new[] { "View Details", "Back" }));
+					.AddChoices(new[] { "Use Template", "Back" }));
 
 			if (choice == "Back") break;
 
-			// View Details
-			var templateName = AnsiConsole.Prompt(
+			var selectedTemplate = AnsiConsole.Prompt(
 				new SelectionPrompt<string>()
 					.Title("Select template:")
 					.AddChoices(templates.Select(Path.GetFileName).OrderBy(x => x).Where(x => x != null)!));
 
-			ViewTemplateDetails(Path.Combine(templatesDir, templateName ?? string.Empty));
-		}
-	}
+			// Ask for package name and create
+			var packageName = AnsiConsole.Ask<string>("\n[dim]Package name[/]:");
+			var fullOutputPath = Path.Combine(Environment.CurrentDirectory, packageName);
 
-	private static void ViewTemplateDetails(string templatePath)
-	{
-		AnsiConsole.Clear();
-		var name = Path.GetFileName(templatePath);
-
-		AnsiConsole.MarkupLine($"[bold white]{name}[/]\n");
-
-		// Show file tree
-		var files = Directory.GetFiles(templatePath, "*", SearchOption.AllDirectories)
-			.Where(f => !Path.GetFileName(f).StartsWith("."))
-			.OrderBy(x => x);
-
-		var tree = new Tree($"[dim]{name}/[/]");
-
-		var grouped = files.GroupBy(Path.GetDirectoryName);
-		foreach (var group in grouped)
-		{
-			var groupKey = group.Key ?? string.Empty;
-			var relPath = Path.GetRelativePath(templatePath, groupKey);
-			if (string.IsNullOrEmpty(relPath))
+			if (TemplateGeneratorLogic.TryGenerateFromTemplate(
+				Path.Combine(templatesDir, selectedTemplate ?? string.Empty),
+				fullOutputPath,
+				packageName,
+				out var fileCount))
 			{
-				foreach (var f in group)
-					tree.AddNode($"[white]{Path.GetFileName(f)}[/]");
+				GitLogic.TryInitGit(fullOutputPath, out var gitInit);
+				AnsiConsole.MarkupLine($"\n[green]Success:[/] Created {fileCount} files");
+				if (gitInit) AnsiConsole.MarkupLine("[green]git initialized[/]");
 			}
 			else
 			{
-				var node = tree.AddNode($"[cyan]{relPath}/[/]");
-				foreach (var f in group)
-					node.AddNode($"[white]{Path.GetFileName(f)}[/]");
+				AnsiConsole.MarkupLine("\n[red]Error:[/] Failed to create package");
 			}
-		}
 
-		AnsiConsole.Write(tree);
-		AnsiConsole.MarkupLine("\n[dim]Press Enter to continue.[/]");
-		Console.ReadLine();
+			AnsiConsole.MarkupLine("\nPress Enter.");
+			Console.ReadLine();
+		}
 	}
 
 	private static string ExtractPackageName(string jsonPath)
