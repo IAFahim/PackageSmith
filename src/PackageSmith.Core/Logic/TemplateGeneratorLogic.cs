@@ -93,6 +93,56 @@ public static class TemplateGeneratorLogic
 		return true;
 	}
 
+	// Template generation with user-provided metadata
+	public static bool TryGenerateFromTemplate(
+		string templatePath,
+		string outputPath,
+		string packageName,
+		string displayName,
+		string description,
+		string authorName,
+		string unityVersion,
+		out int processedFiles)
+	{
+		processedFiles = 0;
+		if (!Directory.Exists(templatePath)) return false;
+
+		if (Directory.Exists(outputPath))
+		{
+			if (Directory.EnumerateFileSystemEntries(outputPath).Any())
+				return false;
+		}
+		Directory.CreateDirectory(outputPath);
+
+		var files = Directory.EnumerateFiles(templatePath, "*", SearchOption.AllDirectories);
+
+		foreach (var file in files)
+		{
+			if (Path.GetFileName(file).StartsWith(".")) continue;
+
+			var relativePath = Path.GetRelativePath(templatePath, file);
+			var destFile = Path.Combine(outputPath, DetokenizePath(relativePath, packageName));
+
+			Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
+
+			if (Path.GetExtension(file).Equals(".asmdef", StringComparison.OrdinalIgnoreCase))
+			{
+				var content = ProcessAsmDefFile(file, packageName, displayName, description, authorName, unityVersion);
+				File.WriteAllText(destFile, content);
+			}
+			else
+			{
+				var content = File.ReadAllText(file);
+				var detokenizedContent = DetokenizeString(content, packageName, displayName, description, authorName, unityVersion);
+				File.WriteAllText(destFile, detokenizedContent);
+			}
+
+			processedFiles++;
+		}
+
+		return true;
+	}
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static string ProcessAsmDefFile(string asmdefPath, string packageName)
 	{
@@ -188,6 +238,102 @@ public static class TemplateGeneratorLogic
 		return Encoding.UTF8.GetString(stream.ToArray());
 	}
 
+	// ProcessAsmDefFile with metadata for detokenization
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string ProcessAsmDefFile(string asmdefPath, string packageName, string displayName, string description, string authorName, string unityVersion)
+	{
+		var content = File.ReadAllText(asmdefPath);
+		var detokenized = DetokenizeString(content, packageName, displayName, description, authorName, unityVersion);
+
+		var doc = JsonDocument.Parse(detokenized);
+		var root = doc.RootElement;
+
+		var references = new List<string>();
+		if (root.TryGetProperty("references", out var refsProp) && refsProp.ValueKind == JsonValueKind.Array)
+		{
+			foreach (var refElem in refsProp.EnumerateArray())
+			{
+				if (refElem.ValueKind == JsonValueKind.String)
+					references.Add(refElem.GetString() ?? string.Empty);
+			}
+		}
+
+		var versionDefines = new Dictionary<string, (string expression, string @define)>();
+		if (root.TryGetProperty("versionDefines", out var existingProp) && existingProp.ValueKind == JsonValueKind.Array)
+		{
+			foreach (var vd in existingProp.EnumerateArray())
+			{
+				if (vd.TryGetProperty("name", out var nameProp))
+				{
+					var name = nameProp.GetString();
+					if (!string.IsNullOrEmpty(name))
+					{
+						var exp = vd.TryGetProperty("expression", out var e) ? e.GetString() : "";
+						var def = vd.TryGetProperty("define", out var d) ? d.GetString() : "";
+						versionDefines[name] = (exp ?? "", def ?? "");
+					}
+				}
+			}
+		}
+
+		foreach (var refName in references)
+		{
+			var packageId = DerivePackageId(refName);
+
+			if (versionDefines.ContainsKey(packageId)) continue;
+
+			var defineSymbol = DeriveDefineSymbol(refName);
+
+			versionDefines[packageId] = ("0.0.1", defineSymbol);
+		}
+
+		using var stream = new MemoryStream();
+		using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+
+		writer.WriteStartObject();
+
+		foreach (var prop in root.EnumerateObject())
+		{
+			if (prop.NameEquals("versionDefines")) continue;
+			if (prop.NameEquals("references"))
+			{
+				var asmName = GetAssemblyNameFromPackage(packageName);
+				writer.WritePropertyName(prop.Name);
+				writer.WriteStartArray();
+				foreach (var refName in references)
+				{
+					var finalRef = refName.Replace("{{ASM_NAME}}", asmName);
+					writer.WriteStringValue(finalRef);
+				}
+				writer.WriteEndArray();
+			}
+			else
+			{
+				prop.WriteTo(writer);
+			}
+		}
+
+		if (versionDefines.Count > 0)
+		{
+			writer.WritePropertyName("versionDefines");
+			writer.WriteStartArray();
+			foreach (var (name, (expression, define)) in versionDefines)
+			{
+				writer.WriteStartObject();
+				writer.WriteString("name", name);
+				writer.WriteString("expression", expression);
+				writer.WriteString("define", define);
+				writer.WriteEndObject();
+			}
+			writer.WriteEndArray();
+		}
+
+		writer.WriteEndObject();
+		writer.Flush();
+
+		return Encoding.UTF8.GetString(stream.ToArray());
+	}
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static string DerivePackageId(string assemblyName)
 	{
@@ -231,16 +377,55 @@ public static class TemplateGeneratorLogic
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string DetokenizeString(string input, string packageName, string displayName, string description, string authorName, string unityVersion)
+	{
+		if (string.IsNullOrEmpty(input)) return input;
+
+		var asmName = GetAssemblyNameFromPackage(packageName);
+		var asmShortName = GetShortName(asmName);
+		var companyName = GetCompanyNameFromPackage(packageName);
+
+		// Use provided values or fallback to derived values
+		displayName = string.IsNullOrEmpty(displayName) ? GetDisplayNameFromPackage(packageName) : displayName;
+		description = string.IsNullOrEmpty(description) ? $"Generated by {displayName}" : description;
+		authorName = string.IsNullOrEmpty(authorName) ? companyName : authorName;
+		unityVersion = string.IsNullOrEmpty(unityVersion) ? "2022.3" : unityVersion;
+
+		// Standard detokenization
+		return input
+			.Replace("{{PACKAGE_NAME}}", packageName)
+			.Replace("{{DISPLAY_NAME}}", displayName)
+			.Replace("{{DESCRIPTION}}", description)
+			.Replace("{{AUTHOR_NAME}}", authorName)
+			.Replace("{{AUTHOR_EMAIL}}", string.Empty)
+			.Replace("{{COMPANY_NAME}}", companyName)
+			.Replace("{{VERSION}}", "1.0.0")
+			.Replace("{{UNITY_VERSION}}", unityVersion)
+			.Replace("{{ASM_NAME}}", asmName)
+			.Replace("{{ASM_SHORT_NAME}}", asmShortName)
+			.Replace("{{PACKAGE_PASCAL_NAME}}", asmName);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static string DetokenizeString(string input, string packageName)
 	{
 		if (string.IsNullOrEmpty(input)) return input;
 
 		var asmName = GetAssemblyNameFromPackage(packageName);
 		var asmShortName = GetShortName(asmName);
+		var companyName = GetCompanyNameFromPackage(packageName);
+		var displayName = GetDisplayNameFromPackage(packageName);
 
 		// Standard detokenization
 		return input
 			.Replace("{{PACKAGE_NAME}}", packageName)
+			.Replace("{{DISPLAY_NAME}}", displayName)
+			.Replace("{{DESCRIPTION}}", $"Generated by {displayName}")
+			.Replace("{{AUTHOR_NAME}}", companyName)
+			.Replace("{{AUTHOR_EMAIL}}", string.Empty)
+			.Replace("{{COMPANY_NAME}}", companyName)
+			.Replace("{{VERSION}}", "1.0.0")
+			.Replace("{{UNITY_VERSION}}", "2022.3")
 			.Replace("{{ASM_NAME}}", asmName)
 			.Replace("{{ASM_SHORT_NAME}}", asmShortName)
 			.Replace("{{PACKAGE_PASCAL_NAME}}", asmName);
@@ -297,5 +482,45 @@ public static class TemplateGeneratorLogic
 	{
 		var parts = asmName.Split('.');
 		return parts.Length > 0 ? parts[^1] : asmName;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string GetCompanyNameFromPackage(string packageName)
+	{
+		var parts = packageName.Split('.');
+		if (parts.Length >= 2 && parts[0] is "com" or "org" or "io" or "net")
+		{
+			return ToPascalCase(parts[1]);
+		}
+		return "YourCompany";
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string GetDisplayNameFromPackage(string packageName)
+	{
+		var parts = packageName.Split('.');
+		if (parts.Length >= 3)
+		{
+			var lastPart = ToPascalCase(parts[^1]);
+			return $"{GetCompanyNameFromPackage(packageName)} {lastPart}";
+		}
+		return ToPascalCase(packageName);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string ToPascalCase(string input)
+	{
+		if (string.IsNullOrEmpty(input)) return input;
+		var parts = input.Split('-', '_');
+		var result = new StringBuilder();
+		foreach (var part in parts)
+		{
+			if (string.IsNullOrEmpty(part)) continue;
+			if (part.Length > 0)
+				result.Append(char.ToUpperInvariant(part[0]));
+			if (part.Length > 1)
+				result.Append(part.Substring(1).ToLowerInvariant());
+		}
+		return result.Length > 0 ? result.ToString() : input;
 	}
 }
