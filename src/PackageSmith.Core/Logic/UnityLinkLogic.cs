@@ -42,7 +42,8 @@ public static class UnityLinkLogic
 		try
 		{
 			var json = File.ReadAllText(manifestPath);
-			var doc = JsonDocument.Parse(json);
+			var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip };
+			var doc = JsonDocument.Parse(json, options);
 			var root = doc.RootElement;
 
 			var dependencies = new Dictionary<string, string>();

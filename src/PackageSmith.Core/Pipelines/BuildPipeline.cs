@@ -259,6 +259,21 @@ public sealed class BuildPipeline : IPackageGenerator
 			? $"{{\"name\": \"{authorName}\"}}"
 			: $"{{\"name\": \"{authorName}\", \"email\": \"{authorEmail}\"}}";
 
+		// Build dependencies object
+		var deps = string.Empty;
+		if (package.Dependencies != null && package.Dependencies.Count > 0)
+		{
+			deps = ",\n\t\"dependencies\": {";
+			var first = true;
+			foreach (var dep in package.Dependencies)
+			{
+				if (!first) deps += ",";
+				deps += $"\n\t\t\"{dep.Name}\": \"{dep.Version}\"";
+				first = false;
+			}
+			deps += "\n\t}";
+		}
+
 		var samples = package.HasModule(PackageModuleType.Samples) ? ",\n\t\"samples\": [{{\"displayName\": \"Demo\", \"path\": \"Samples~/Demo\"}}]" : "";
 
 		return $$"""
@@ -268,7 +283,7 @@ public sealed class BuildPipeline : IPackageGenerator
 			"displayName": "{{package.DisplayName.ToString()}}",
 			"description": "{{package.Description.ToString()}}",
 			"unity": "{{config.DefaultUnityVersion.ToString()}}",
-			"author": {{authorObj}}{{samples}}
+			"author": {{authorObj}}{{deps}}{{samples}}
 		}
 		""";
 	}

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using PackageSmith.Data.Types;
 
@@ -21,8 +22,23 @@ public struct PackageState
 	public int DependencyCount;
 	public TemplateType SelectedTemplate;
 	public LicenseType License;
+	public List<PackageDependency> Dependencies;
 
 	public override readonly string ToString() => $"[Package] {PackageName.ToString()} ({DisplayName.ToString()})";
+}
+
+[Serializable]
+[StructLayout(LayoutKind.Sequential)]
+public struct PackageDependency
+{
+	public string Name;
+	public string Version;
+
+	public PackageDependency(string name, string version)
+	{
+		Name = name;
+		Version = version;
+	}
 }
 
 [Serializable]

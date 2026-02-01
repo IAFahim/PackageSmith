@@ -91,7 +91,13 @@ public static class TemplateGeneratorLogic
 		processedFiles = 0;
 		if (!Directory.Exists(templatePath)) return false;
 
-		if (Directory.Exists(outputPath)) return false; // SAFETY: Never auto-delete existing directories
+		// SAFETY: Check if directory exists and is not empty
+		if (Directory.Exists(outputPath))
+		{
+			// Allow if empty, fail if has files
+			if (Directory.EnumerateFileSystemEntries(outputPath).Any())
+				return false;
+		}
 		Directory.CreateDirectory(outputPath);
 
 		var files = Directory.EnumerateFiles(templatePath, "*", SearchOption.AllDirectories);

@@ -40,6 +40,9 @@ static class Program
 			config.AddCommand<SettingsCommand>("settings")
 				.WithDescription("Configure global package settings");
 
+			config.AddCommand<CiCommand>("ci")
+				.WithDescription("Manage CI/CD workflows");
+
 			config.SetInterceptor(new CommandInterceptor());
 		});
 
