@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using Spectre.Console;
 using PackageSmith.App.Bridges;
 using PackageSmith.Data.State;
@@ -11,14 +13,28 @@ public static class StateMachine
 {
 	public static int Run()
 	{
-		ShowBanner();
-		NewPackageFlow();
-		return 0;
+		while (true)
+		{
+			ShowBanner();
+
+			var choice = AnsiConsole.Prompt(
+				new SelectionPrompt<string>()
+					.AddChoices(new[] { "New Package", "Template Harvester", "Browse Templates", "Exit" }));
+
+			switch (choice)
+			{
+				case "New Package": NewPackageFlow(); break;
+				case "Template Harvester": TemplateHarvesterFlow(); break;
+				case "Browse Templates": BrowseTemplatesFlow(); break;
+				case "Exit": return 0;
+			}
+		}
 	}
 
 	private static void ShowBanner()
 	{
-		AnsiConsole.MarkupLine("[bold cyan]◆[/] [bold white]PackageSmith[/]\n");
+		AnsiConsole.MarkupLine("[bold cyan]◆[/] [bold white]PackageSmith[/]");
+		AnsiConsole.MarkupLine("[dim]Unity Package Scaffolding[/]\n");
 	}
 
 	private static void NewPackageFlow()
@@ -61,5 +77,178 @@ public static class StateMachine
 			AnsiConsole.MarkupLine("\n[bold green]Done[/]. Press Enter.");
 			Console.ReadLine();
 		}
+	}
+
+	private static void TemplateHarvesterFlow()
+	{
+		AnsiConsole.MarkupLine("[bold white]Template Harvester[/]\n");
+		AnsiConsole.MarkupLine("[dim]Convert an existing package into a reusable template.[/]\n");
+
+		var sourcePath = AnsiConsole.Ask<string>("[dim]Source package path[/]:");
+		var templateName = AnsiConsole.Ask<string>("[dim]Template name[/]:", "Custom.Template");
+
+		if (!Directory.Exists(sourcePath))
+		{
+			AnsiConsole.MarkupLine("\n[red]Error:[/] Path does not exist.");
+			Console.ReadLine();
+			return;
+		}
+
+		var packageJsonPath = Path.Combine(sourcePath, "package.json");
+		if (!File.Exists(packageJsonPath))
+		{
+			AnsiConsole.MarkupLine("\n[red]Error:[/] No package.json found.");
+			Console.ReadLine();
+			return;
+		}
+
+		var packageName = ExtractPackageName(packageJsonPath);
+		var templatesDir = Path.Combine(GetAppDataPath(), "PackageSmith", "Templates", templateName);
+
+		AnsiConsole.MarkupLine($"\n[dim]Harvesting...[/]");
+
+		if (TemplateHarvesterLogic.TryHarvest(sourcePath, templatesDir, packageName, out var count))
+		{
+			// Save manifest
+			var manifestPath = Path.Combine(templatesDir, ".template.json");
+			var manifest = $"{{\"id\":\"{templateName}\",\"sourcePackage\":\"{packageName}\",\"fileCount\":{count}}}";
+			File.WriteAllText(manifestPath, manifest);
+
+			AnsiConsole.MarkupLine($"[green]Success![/] Harvested {count} files.");
+			AnsiConsole.MarkupLine($"[dim]Template saved to:[/] [blue]{templatesDir}[/]");
+		}
+		else
+		{
+			AnsiConsole.MarkupLine("[red]Harvest failed.[/]");
+		}
+
+		AnsiConsole.MarkupLine("\nPress Enter.");
+		Console.ReadLine();
+	}
+
+	private static void BrowseTemplatesFlow()
+	{
+		var templatesDir = Path.Combine(GetAppDataPath(), "PackageSmith", "Templates");
+
+		if (!Directory.Exists(templatesDir))
+		{
+			AnsiConsole.MarkupLine("[dim]No templates found.[/]\nPress Enter.");
+			Console.ReadLine();
+			return;
+		}
+
+		var templates = Directory.GetDirectories(templatesDir);
+		if (templates.Length == 0)
+		{
+			AnsiConsole.MarkupLine("[dim]No templates found.[/]\nPress Enter.");
+			Console.ReadLine();
+			return;
+		}
+
+		while (true)
+		{
+			AnsiConsole.Clear();
+			AnsiConsole.MarkupLine("[bold white]Browse Templates[/]\n");
+
+			var table = new Table();
+			table.Border(TableBorder.Minimal);
+			table.AddColumn("[dim]Name[/]");
+			table.AddColumn("[dim]Files[/]");
+			table.AddColumn("[dim]Source[/]");
+
+			foreach (var t in templates.OrderBy(x => x))
+			{
+				var name = Path.GetFileName(t);
+				var manifestPath = Path.Combine(t, ".template.json");
+				var fileCount = Directory.GetFiles(t, "*", SearchOption.AllDirectories).Length;
+				var source = "Unknown";
+
+				if (File.Exists(manifestPath))
+				{
+					try
+					{
+						var manifest = System.Text.Json.JsonDocument.Parse(File.ReadAllText(manifestPath));
+						if (manifest.RootElement.TryGetProperty("sourcePackage", out var src))
+							source = src.GetString() ?? "Unknown";
+						if (manifest.RootElement.TryGetProperty("fileCount", out var fc))
+							fileCount = fc.GetInt32();
+					}
+					catch { /* Ignore */ }
+				}
+
+				table.AddRow($"[cyan]{name}[/]", $"[white]{fileCount}[/]", $"[dim]{source}[/]");
+			}
+
+			AnsiConsole.Write(table);
+
+			var choice = AnsiConsole.Prompt(
+				new SelectionPrompt<string>()
+					.AddChoices(new[] { "View Details", "Back" }));
+
+			if (choice == "Back") break;
+
+			// View Details
+			var templateName = AnsiConsole.Prompt(
+				new SelectionPrompt<string>()
+					.Title("Select template:")
+					.AddChoices(templates.Select(Path.GetFileName).OrderBy(x => x).Where(x => x != null)!));
+
+			ViewTemplateDetails(Path.Combine(templatesDir, templateName ?? string.Empty));
+		}
+	}
+
+	private static void ViewTemplateDetails(string templatePath)
+	{
+		AnsiConsole.Clear();
+		var name = Path.GetFileName(templatePath);
+
+		AnsiConsole.MarkupLine($"[bold white]{name}[/]\n");
+
+		// Show file tree
+		var files = Directory.GetFiles(templatePath, "*", SearchOption.AllDirectories)
+			.Where(f => !Path.GetFileName(f).StartsWith("."))
+			.OrderBy(x => x);
+
+		var tree = new Tree($"[dim]{name}/[/]");
+
+		var grouped = files.GroupBy(Path.GetDirectoryName);
+		foreach (var group in grouped)
+		{
+			var groupKey = group.Key ?? string.Empty;
+			var relPath = Path.GetRelativePath(templatePath, groupKey);
+			if (string.IsNullOrEmpty(relPath))
+			{
+				foreach (var f in group)
+					tree.AddNode($"[white]{Path.GetFileName(f)}[/]");
+			}
+			else
+			{
+				var node = tree.AddNode($"[cyan]{relPath}/[/]");
+				foreach (var f in group)
+					node.AddNode($"[white]{Path.GetFileName(f)}[/]");
+			}
+		}
+
+		AnsiConsole.Write(tree);
+		AnsiConsole.MarkupLine("\n[dim]Press Enter to continue.[/]");
+		Console.ReadLine();
+	}
+
+	private static string ExtractPackageName(string jsonPath)
+	{
+		var content = File.ReadAllText(jsonPath);
+		var doc = System.Text.Json.JsonDocument.Parse(content);
+		if (doc.RootElement.TryGetProperty("name", out var prop))
+			return prop.GetString() ?? "unknown";
+		return "unknown";
+	}
+
+	private static string GetAppDataPath()
+	{
+		if (OperatingSystem.IsWindows())
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+		if (OperatingSystem.IsMacOS())
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support");
+		return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
 	}
 }

@@ -21,6 +21,9 @@ public static class TemplateHarvesterLogic
 
 		foreach (var file in files)
 		{
+			// Skip files in ignored directories
+			if (file.Contains("/.git/") || file.Contains("\\.git\\")) continue;
+
 			var fileName = Path.GetFileName(file);
 
 			if (IsIgnoredFile(fileName)) continue;
@@ -99,8 +102,14 @@ public static class TemplateHarvesterLogic
 
 	private static bool IsIgnoredFile(string fileName)
 	{
-		if (fileName.StartsWith(".")) return true;
+		if (fileName.StartsWith(".")) return true; // .git, .DS_Store, etc
 		return false;
+	}
+
+	private static bool IsIgnoredDirectory(string dirPath)
+	{
+		var dirName = Path.GetFileName(dirPath);
+		return dirName.Equals(".git", StringComparison.OrdinalIgnoreCase);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
