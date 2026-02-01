@@ -1,16 +1,16 @@
-/mnt/5f79a6c2-0764-4cd7-88b4-12dbd1b39909/ECSTimelineBrain/Assets# PackageSmith Installation Guide
+# PackageSmith Installation Guide
 
 ## Quick Start
 
 ### Prerequisites
-- .NET SDK 8.0 or higher ([Download](https://dotnet.microsoft.com/download))
+- .NET SDK 9.0 or higher ([Download](https://dotnet.microsoft.com/download))
 - Linux, macOS, or Windows with PowerShell
 
 ### Linux/macOS Installation
 
 ```bash
 # Clone or navigate to repository
-cd packagesmith/
+cd PackageSmith
 
 # Run installer
 ./install.sh
@@ -41,10 +41,12 @@ pksmith --help
 ### Linux/macOS
 - **Binary**: `~/.local/share/pksmith/pksmith`
 - **Config**: `~/.bashrc` or `~/.zshrc`
+- **Templates**: `~/.local/share/PackageSmith/Templates/`
 - **PATH Addition**: `export PATH="$PATH:$HOME/.local/share/pksmith"`
 
 ### Windows
-- **Binary**: `%USERPROFILE%\.packagesmith\pksmith.exe`
+- **Binary**: `%LOCALAPPDATA%\PackageSmith\pksmith.exe`
+- **Templates**: `%LOCALAPPDATA%\PackageSmith\Templates\`
 - **PATH**: Added to user environment variables
 
 ## Troubleshooting
@@ -106,14 +108,14 @@ export PATH="$PATH:$HOME/.dotnet"
 **"PackageSmith.sln not found"**
 ```bash
 # Make sure you're in the repository root
-cd packagesmith/
+cd PackageSmith
 ls PackageSmith.sln  # Should exist
 ```
 
 **"Build failed"**
 ```bash
 # Check .NET version
-dotnet --version  # Should be 8.0 or higher
+dotnet --version  # Should be 9.0 or higher
 
 # Clean and rebuild
 dotnet clean
@@ -152,8 +154,8 @@ which pksmith  # Should show path
 # Check version
 pksmith --help  # Shows commands
 
-# Test package creation
-pksmith templates list
+# List templates
+pksmith templates
 ```
 
 ## Manual Installation (Alternative)
@@ -166,8 +168,8 @@ dotnet build -c Release
 
 # Copy binary
 mkdir -p ~/.local/share/pksmith
-cp src/PackageSmith/bin/Release/net9.0/* ~/.local/share/pksmith/
-mv ~/.local/share/pksmith/PackageSmith ~/.local/share/pksmith/pksmith
+cp src/PackageSmith.App/bin/Release/net9.0/* ~/.local/share/pksmith/
+mv ~/.local/share/pksmith/PackageSmith.App ~/.local/share/pksmith/pksmith
 chmod +x ~/.local/share/pksmith/pksmith
 
 # Add to PATH manually
@@ -185,8 +187,8 @@ dotnet build -c Release
 
 # Install (requires sudo)
 sudo mkdir -p /usr/local/share/pksmith
-sudo cp src/PackageSmith/bin/Release/net9.0/* /usr/local/share/pksmith/
-sudo mv /usr/local/share/pksmith/PackageSmith /usr/local/share/pksmith/pksmith
+sudo cp src/PackageSmith.App/bin/Release/net9.0/* /usr/local/share/pksmith/
+sudo mv /usr/local/share/pksmith/PackageSmith.App /usr/local/share/pksmith/pksmith
 sudo chmod +x /usr/local/share/pksmith/pksmith
 sudo ln -sf /usr/local/share/pksmith/pksmith /usr/local/bin/pksmith
 
@@ -206,8 +208,8 @@ COPY . .
 
 RUN dotnet build -c Release
 RUN mkdir -p /usr/local/share/pksmith && \
-    cp src/PackageSmith/bin/Release/net9.0/* /usr/local/share/pksmith/ && \
-    mv /usr/local/share/pksmith/PackageSmith /usr/local/share/pksmith/pksmith && \
+    cp src/PackageSmith.App/bin/Release/net9.0/* /usr/local/share/pksmith/ && \
+    mv /usr/local/share/pksmith/PackageSmith.App /usr/local/share/pksmith/pksmith && \
     chmod +x /usr/local/share/pksmith/pksmith && \
     ln -s /usr/local/share/pksmith/pksmith /usr/local/bin/pksmith
 
@@ -220,17 +222,17 @@ For GitHub Actions:
 
 ```yaml
 - name: Install .NET
-  uses: actions/setup-dotnet@v3
+  uses: actions/setup-dotnet@v4
   with:
     dotnet-version: '9.0.x'
 
 - name: Install PackageSmith
   run: |
-    git clone https://github.com/yourorg/packagesmith
-    cd packagesmith
+    git clone https://github.com/IAFahim/PackageSmith.git
+    cd PackageSmith
     ./install.sh
     export PATH="$PATH:$HOME/.local/share/pksmith"
-    
+
 - name: Use PackageSmith
   run: pksmith --help
 ```
@@ -241,20 +243,18 @@ After successful installation:
 
 1. **Explore templates**:
    ```bash
-   pksmith templates list
-   pksmith templates info ecs-modular
+   pksmith templates
    ```
 
 2. **Create your first package**:
    ```bash
-   pksmith new basic --name com.yourcompany.utilities
+   pksmith new com.yourcompany.utilities --template ecs
    ```
 
-3. **Read documentation**:
-   - `README.md` - Feature overview
-   - `TRANSFER_FEATURE.md` - Package transfer guide
-   - `GIT_INTEGRATION.md` - Git workflow guide
-   - `CI_CD_FEATURE.md` - CI/CD automation guide
+3. **Generate CI workflows**:
+   ```bash
+   pksmith ci generate -o ./your-package
+   ```
 
 ## Support
 
