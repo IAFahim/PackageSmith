@@ -7,8 +7,6 @@ namespace PackageSmith.Core.Logic;
 
 public static class TemplateHarvesterLogic
 {
-	private const int HeaderScanLimit = 4096;
-
 	public static bool TryHarvest(string sourcePath, string outputTemplatePath, string sourcePackageName, out int processedFiles)
 	{
 		processedFiles = 0;
@@ -17,8 +15,7 @@ public static class TemplateHarvesterLogic
 		if (Directory.Exists(outputTemplatePath)) Directory.Delete(outputTemplatePath, true);
 		Directory.CreateDirectory(outputTemplatePath);
 
-		// Extract root assembly name from first .asmdef
-		var rootAsmName = ExtractRootAssemblyName(sourcePath);
+		var rootAsmName = ExtractRootAssemblyName(sourcePath); // Extract root assembly name from first .asmdef
 
 		var files = Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories);
 
@@ -81,26 +78,10 @@ public static class TemplateHarvesterLogic
 
 	private static FileAction AnalyzeCSharpFile(string path)
 	{
-		try
-		{
-			using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-			var buffer = new byte[HeaderScanLimit];
-			var bytesRead = fs.Read(buffer, 0, HeaderScanLimit);
-
-			var content = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-			if (content.Contains("[assembly: DisableAutoTypeRegistration]", StringComparison.Ordinal) ||
-				content.Contains("[assembly: InternalsVisibleTo", StringComparison.Ordinal))
-			{
-				return FileAction.Tokenize;
-			}
-		}
-		catch
-		{
-			// Ignore read errors
-		}
-
-		return FileAction.Drop;
+		// We tokenize all C# files now to ensure namespace updates
+		// Previously we checked for specific attributes, but standardizing
+		// namespace updates for templates is safer.
+		return FileAction.Tokenize;
 	}
 
 	private static bool IsIgnoredFile(string fileName)

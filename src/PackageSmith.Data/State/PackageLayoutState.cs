@@ -12,7 +12,7 @@ public struct VirtualFileState
 	public string Content;
 	public int ContentLength;
 
-	public override readonly string ToString() => $"[File] {Path.ToString()}";
+	public readonly override string ToString() => $"[File] {Path}";
 }
 
 [Serializable]
@@ -21,7 +21,7 @@ public struct VirtualDirectoryState
 {
 	public string Path;
 
-	public override readonly string ToString() => $"[Dir] {Path.ToString()}";
+	public readonly override string ToString() => $"[Dir] {Path}";
 }
 
 [Serializable]
@@ -31,5 +31,5 @@ public struct PackageLayoutState
 	public int DirectoryCount;
 	public int FileCount;
 
-	public override readonly string ToString() => $"[Layout] {DirectoryCount} dirs, {FileCount} files";
+	public readonly override string ToString() => $"[Layout] {DirectoryCount} dirs, {FileCount} files";
 }

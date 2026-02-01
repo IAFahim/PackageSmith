@@ -35,8 +35,7 @@ public sealed class CiCommand : Command<CiCommand.Settings>
 		var workflowsDir = Path.Combine(outputPath, ".github", "workflows");
 		Directory.CreateDirectory(workflowsDir);
 
-		// Generate test workflow
-		var testWorkflow = @"name: Test
+		var testWorkflow = @"name: Test // Generate test workflow
 
 on:
   push:
@@ -83,8 +82,7 @@ jobs:
 		var testPath = Path.Combine(workflowsDir, "test.yml");
 		File.WriteAllText(testPath, testWorkflow);
 
-		// Generate release workflow
-		var releaseWorkflow = @"name: Release
+		var releaseWorkflow = @"name: Release // Generate release workflow
 
 on:
   push:

@@ -56,15 +56,12 @@ public static class UnityLinkLogic
 				}
 			}
 
-			// Calculate relative path from Packages to package
-			var packagesDir = Path.Combine(unityProjectPath, "Packages");
+			var packagesDir = Path.Combine(unityProjectPath, "Packages"); // Calculate relative path from Packages to package
 			var relativePath = Path.GetRelativePath(packagesDir, packagePath).Replace("\\", "/");
 
-			// Add or update the local package reference
-			dependencies[packageName] = $"file:{relativePath}";
+			dependencies[packageName] = $"file:{relativePath}"; // Add or update the local package reference
 
-			// Rebuild manifest JSON
-			var newJson = $"{{\n  \"dependencies\": {{";
+			var newJson = $"{{\n  \"dependencies\": {{"; // Rebuild manifest JSON
 			var first = true;
 			foreach (var (name, version) in dependencies)
 			{

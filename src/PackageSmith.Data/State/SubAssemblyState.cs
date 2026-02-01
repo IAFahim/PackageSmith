@@ -12,5 +12,5 @@ public struct SubAssemblyState
 	public SubAssemblyType Type;
 	public int DependencyCount;
 
-	public override readonly string ToString() => $"[SubAsm] {Name.ToString()} ({Type})";
+	public readonly override string ToString() => $"[SubAsm] {Name} ({Type})";
 }

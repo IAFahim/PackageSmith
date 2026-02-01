@@ -11,5 +11,5 @@ public struct ReferenceState
 	public string Name;
 	public bool IsUnityReference;
 
-	public override readonly string ToString() => $"[Ref] {Name.ToString()} {(IsUnityReference ? "[Unity]" : "[Custom]")}";
+	public override readonly string ToString() => $"[Ref] {Name} {(IsUnityReference ? "[Unity]" : "[Custom]")}";
 }

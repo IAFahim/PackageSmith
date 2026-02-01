@@ -24,7 +24,7 @@ public struct PackageState
 	public LicenseType License;
 	public List<PackageDependency> Dependencies;
 
-	public override readonly string ToString() => $"[Package] {PackageName.ToString()} ({DisplayName.ToString()})";
+	public override readonly string ToString() => $"[Package] {PackageName} ({DisplayName})";
 }
 
 [Serializable]

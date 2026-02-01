@@ -52,13 +52,12 @@ public sealed class ConfigPipeline : IConfigService
 		}
 	}
 
-	public AppConfig GetDefault()
+	public void GetDefault(out AppConfig config)
 	{
-		ConfigExtensions.TryGetDefault(out var config);
-		return config;
+		ConfigExtensions.TryGetDefault(out config);
 	}
 
-	public string GetConfigPath() => _configPath;
+	public void GetConfigPath(out string configPath) => configPath = _configPath;
 
 	private void EnsureDirectory()
 	{

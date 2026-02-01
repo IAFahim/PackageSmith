@@ -31,14 +31,12 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
 	public override int Execute(CommandContext context, Settings settings)
 	{
-		// If template is specified, use template generator
-		if (!string.IsNullOrEmpty(settings.TemplateName))
+		if (!string.IsNullOrEmpty(settings.TemplateName)) // If template is specified, use template generator
 		{
 			return CreateFromTemplate(settings);
 		}
 
-		// Otherwise use standard package creation
-		return CreateStandard(settings);
+		return CreateStandard(settings); // Otherwise use standard package creation
 	}
 
 	private int CreateFromTemplate(Settings settings)
@@ -49,8 +47,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 		var templateName = settings.TemplateName!;
 		var outputPath = settings.OutputPath ?? ".";
 
-		// Find template in AppData
-		var templatesDir = GetAppDataPath();
+		var templatesDir = GetAppDataPath(); // Find template in AppData
 		var templatePath = Path.Combine(templatesDir, "PackageSmith", "Templates", templateName);
 
 		if (!Directory.Exists(templatePath))
@@ -62,8 +59,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 			return 1;
 		}
 
-		// Generate package from template
-		var fullOutputPath = Path.Combine(outputPath, packageName);
+		var fullOutputPath = Path.Combine(outputPath, packageName); // Generate package from template
 
 		if (!TemplateGeneratorLogic.TryGenerateFromTemplate(templatePath, fullOutputPath, packageName, out var fileCount))
 		{
@@ -74,12 +70,10 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 		AnsiConsole.MarkupLine($"[green]Success:[/] Created {fileCount} files from '[cyan]{templateName}[/]'");
 		AnsiConsole.MarkupLine($"[dim]Location:[/] {fullOutputPath}");
 
-		// Initialize git if available
-		GitLogic.TryInitGit(fullOutputPath, out var gitSuccess);
+		GitLogic.TryInitGit(fullOutputPath, out var gitSuccess); // Initialize git if available
 		if (gitSuccess) AnsiConsole.MarkupLine("[dim]Git initialized[/]");
 
-		// Link to Unity project if requested
-		if (settings.LinkToUnity)
+		if (settings.LinkToUnity) // Link to Unity project if requested
 		{
 			if (UnityLinkLogic.TryFindUnityProject(fullOutputPath, out var unityPath))
 			{
@@ -135,8 +129,7 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 		AnsiConsole.MarkupLine($"[green]Success:[/] Package created");
 		if (gitSuccess) AnsiConsole.MarkupLine("[dim]Git initialized[/]");
 
-		// Link to Unity project if requested
-		if (settings.LinkToUnity)
+		if (settings.LinkToUnity) // Link to Unity project if requested
 		{
 			if (UnityLinkLogic.TryFindUnityProject(fullPath, out var unityPath))
 			{

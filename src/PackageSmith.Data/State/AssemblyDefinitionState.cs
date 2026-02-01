@@ -17,5 +17,5 @@ public struct AssemblyDefinitionState
 	public int IncludePlatformCount;
 	public int ExcludePlatformCount;
 
-	public override readonly string ToString() => $"[AsmDef] {Name.ToString()}";
+	public readonly override string ToString() => $"[AsmDef] {Name}";
 }

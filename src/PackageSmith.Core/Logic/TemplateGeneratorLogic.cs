@@ -6,83 +6,49 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace PackageSmith.Core.Logic;
 
 public static class TemplateGeneratorLogic
 {
-	// Mapping from assembly names to Unity package names for versionDefines
+	// Mapping from assembly names to known Unity package names
 	private static readonly Dictionary<string, string> AssemblyToPackageMap = new()
 	{
-		// Render Pipelines
-		["Unity.RenderPipelines.Core.Runtime"] = "com.unity.render-pipelines.core",
-		["Unity.RenderPipelines.HighDefinition.Runtime"] = "com.unity.render-pipelines.high-definition",
-		["Unity.RenderPipelines.Universal.Runtime"] = "com.unity.render-pipelines.universal",
-
 		// Input
 		["Unity.InputSystem"] = "com.unity.input.system",
 
 		// Physics
 		["Unity.Physics"] = "com.unity.physics",
 		["Unity.Physics.Custom"] = "com.unity.physics",
+		["Unity.CharacterController"] = "com.unity.charactercontroller",
 
 		// Entities
 		["Unity.Entities"] = "com.unity.entities",
 		["Unity.Entities.Graphics"] = "com.unity.entities.graphics",
 		["Unity.Entities.Hybrid"] = "com.unity.entities.hybrid",
+		["Unity.Scenes"] = "com.unity.entities", // Part of core
 
-		// Collections
+		// Collections & Math
 		["Unity.Collections"] = "com.unity.collections",
-
-		// Other
-		["Unity.Burst"] = "com.unity.burst",
 		["Unity.Mathematics"] = "com.unity.mathematics",
-		["Unity.TextCore"] = "com.unity.textcore",
-		["Unity.Splines"] = "com.unity.splines",
-		["Unity.Transforms"] = "com.unity.transfers",
-		["Unity.Cinemachine"] = "com.unity.cinemachine",
-	};
+		["Unity.Burst"] = "com.unity.burst",
+		["Unity.Jobs"] = "com.unity.jobs",
 
-	// Common Unity package version defines
-	private static readonly Dictionary<string, (string expression, string @define)> UnityPackageDefines = new()
-	{
-		// Render Pipelines
-		["com.unity.render-pipelines.high-definition"] = ("7.1.0", "HDRP_7_1_0_OR_NEWER"),
-		["com.unity.render-pipelines.universal"] = ("14.0.0", "URP_14_0_OR_NEWER"),
-		["com.unity.render-pipelines.core"] = ("1.0.0", "RENDER_PIPELINES_CORE_1_0_OR_NEWER"),
+		// Netcode
+		["Unity.NetCode"] = "com.unity.netcode.gameobjects",
+		["Unity.NetCode.Physics"] = "com.unity.netcode.gameobjects",
+		["Unity.Networking.Transport"] = "com.unity.transport",
 
-		// Input
-		["com.unity.input.system"] = ("1.7.0", "UNITY_INPUT_SYSTEM_1_7_OR_NEWER"),
+		// Graphics
+		["Unity.RenderPipelines.Core"] = "com.unity.render-pipelines.core",
+		["Unity.RenderPipelines.Universal.Runtime"] = "com.unity.render-pipelines.universal",
+		["Unity.RenderPipelines.HighDefinition.Runtime"] = "com.unity.render-pipelines.high-definition",
 
-		// Physics
-		["com.unity.physics"] = ("1.0.0", "UNITY_PHYSICS_MODULE_1_0_OR_NEWER"),
-		["com.unity.physics.modules"] = ("1.0.0", "UNITY_PHYSICS_MODULE_EXISTS"),
-
-		// Entities
-		["com.unity.entities"] = ("1.0.0", "UNITY_ENTITIES_EXISTS"),
-		["com.unity.entities.graphics"] = ("1.0.0", "UNITY_ENTITIES_GRAPHICS_EXISTS"),
-		["com.unity.entities.hybrid"] = ("1.0.0", "UNITY_ENTITIES_HYBRID_EXISTS"),
-
-		// Collections
-		["com.unity.collections"] = ("2.1.0", "UNITY_COLLECTIONS_EXISTS"),
-
-		// Other
-		["com.unity.burst"] = ("1.8.0", "UNITY_BURST_EXISTS"),
-		["com.unity.mathematics"] = ("1.2.0", "UNITY_MATHEMATICS_EXISTS"),
-		["com.unity.modules.animation"] = ("1.0.0", "UNITY_ANIMATION_MODULE_EXISTS"),
-		["com.unity.modules.audio"] = ("1.0.0", "UNITY_AUDIO_MODULE_EXISTS"),
-		["com.unity.modules.particlesystem"] = ("1.0.0", "USING_PARTICLE_SYSTEM"),
-		["com.unity.modules.ui"] = ("1.0.0", "UNITY_UI_MODULES_EXISTS"),
-		["com.unity.ugui"] = ("2.0.0", "UNITY_UGUI_EXISTS"),
-		["com.unity.textcore"] = ("3.0.0", "UNITY_TEXT_CORE_EXISTS"),
-		["com.unity.timeline"] = ("1.7.0", "UNITY_TIMELINE_EXISTS"),
-		["com.unity.toolchain.win"] = ("2.0.0", "UNITY_TOOLCHAIN_WIN_EXISTS"),
-		["com.unity.toolchain.macos"] = ("2.0.0", "UNITY_TOOLCHAIN_MACOS_EXISTS"),
-		["com.unity.toolchain.linux"] = ("2.0.0", "UNITY_TOOLCHAIN_LINUX_EXISTS"),
-		["com.unity.modules.xr"] = ("1.0.0", "UNITY_XR_1_0_OR_NEWER"),
-		["com.unity.cinemachine"] = ("3.1.0", "UNITY_CINEMACHINE_EXISTS"),
-		["com.unity.splines"] = ("2.0.0", "UNITY_SPLINES_EXISTS"),
-		["com.unity.transfers"] = ("1.0.0", "UNITY_TRANSFERS_EXISTS"),
+		// Utils
+		["Unity.Addressables"] = "com.unity.addressables",
+		["Unity.ResourceManager"] = "com.unity.addressables",
+		["Unity.TextMeshPro"] = "com.unity.textmeshpro",
 	};
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -91,10 +57,8 @@ public static class TemplateGeneratorLogic
 		processedFiles = 0;
 		if (!Directory.Exists(templatePath)) return false;
 
-		// SAFETY: Check if directory exists and is not empty
-		if (Directory.Exists(outputPath))
+		if (Directory.Exists(outputPath)) // SAFETY: Check if directory exists and is not empty
 		{
-			// Allow if empty, fail if has files
 			if (Directory.EnumerateFileSystemEntries(outputPath).Any())
 				return false;
 		}
@@ -104,15 +68,14 @@ public static class TemplateGeneratorLogic
 
 		foreach (var file in files)
 		{
-			if (Path.GetFileName(file).StartsWith(".")) continue;
+			if (Path.GetFileName(file).StartsWith(".")) continue; // Skip hidden
 
 			var relativePath = Path.GetRelativePath(templatePath, file);
 			var destFile = Path.Combine(outputPath, DetokenizePath(relativePath, packageName));
 
 			Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
 
-			// Special handling for .asmdef files - inject versionDefines
-			if (Path.GetExtension(file).Equals(".asmdef", StringComparison.OrdinalIgnoreCase))
+			if (Path.GetExtension(file).Equals(".asmdef", StringComparison.OrdinalIgnoreCase)) // Special handling for .asmdef files - inject versionDefines
 			{
 				var content = ProcessAsmDefFile(file, packageName);
 				File.WriteAllText(destFile, content);
@@ -136,77 +99,65 @@ public static class TemplateGeneratorLogic
 		var content = File.ReadAllText(asmdefPath);
 		var detokenized = DetokenizeString(content, packageName);
 
-		// Parse and inject versionDefines
 		var doc = JsonDocument.Parse(detokenized);
 		var root = doc.RootElement;
 
-		// Get references
-		var references = new List<string>();
+		var references = new List<string>(); // 1. Extract References
 		if (root.TryGetProperty("references", out var refsProp) && refsProp.ValueKind == JsonValueKind.Array)
 		{
 			foreach (var refElem in refsProp.EnumerateArray())
 			{
 				if (refElem.ValueKind == JsonValueKind.String)
-				{
 					references.Add(refElem.GetString() ?? string.Empty);
-				}
 			}
 		}
 
-		// Build versionDefines for Unity packages
-		var versionDefines = new Dictionary<string, (string expression, string @define)>();
-		foreach (var refName in references)
-		{
-			// Try direct package name match first
-			if (UnityPackageDefines.TryGetValue(refName, out var versionDef))
-			{
-				versionDefines[refName] = versionDef;
-			}
-			// Try assembly name mapping
-			else if (AssemblyToPackageMap.TryGetValue(refName, out var mappedPackage) && UnityPackageDefines.TryGetValue(mappedPackage, out versionDef))
-			{
-				versionDefines[mappedPackage] = versionDef;
-			}
-		}
-
-		// Add existing versionDefines if any, merging duplicates by name
+		var versionDefines = new Dictionary<string, (string expression, string @define)>(); // 2. Build map of Existing Version Defines to avoid duplicates
 		if (root.TryGetProperty("versionDefines", out var existingProp) && existingProp.ValueKind == JsonValueKind.Array)
 		{
 			foreach (var vd in existingProp.EnumerateArray())
 			{
-				if (vd.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
+				if (vd.TryGetProperty("name", out var nameProp))
 				{
 					var name = nameProp.GetString();
-					if (!string.IsNullOrEmpty(name) && !versionDefines.ContainsKey(name))
+					if (!string.IsNullOrEmpty(name))
 					{
-						var expression = vd.TryGetProperty("expression", out var expProp) ? expProp.GetString() ?? string.Empty : string.Empty;
-						var define = vd.TryGetProperty("define", out var defProp) ? defProp.GetString() ?? string.Empty : string.Empty;
-						versionDefines[name] = (expression, define);
+						var exp = vd.TryGetProperty("expression", out var e) ? e.GetString() : "";
+						var def = vd.TryGetProperty("define", out var d) ? d.GetString() : "";
+						versionDefines[name] = (exp ?? "", def ?? "");
 					}
 				}
 			}
 		}
 
-		// Build new JSON using JsonObject for mutable manipulation
-		using var stream = new MemoryStream();
+		foreach (var refName in references) // 3. Auto-Generate Version Defines for ALL References
+		{
+			var packageId = DerivePackageId(refName); // Skip if this reference already has a rule in existing versionDefines. Note: versionDefines usually target Package IDs, but refs are Assembly Names. We check if we have a mapped package ID that is already defined.
+
+			if (versionDefines.ContainsKey(packageId)) continue;
+
+			var defineSymbol = DeriveDefineSymbol(refName); // Create Define Symbol
+
+			versionDefines[packageId] = ("0.0.1", defineSymbol); // Add to list (Expression 0.0.1 means "if present")
+		}
+
+		using var stream = new MemoryStream(); // 4. Write output
 		using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
 
 		writer.WriteStartObject();
 
-		// Copy all existing properties except versionDefines
 		foreach (var prop in root.EnumerateObject())
 		{
 			if (prop.NameEquals("versionDefines")) continue;
 			if (prop.NameEquals("references"))
 			{
-				// Write detokenized references
 				var asmName = GetAssemblyNameFromPackage(packageName);
 				writer.WritePropertyName(prop.Name);
 				writer.WriteStartArray();
 				foreach (var refName in references)
 				{
-					var detokenizedRef = refName.Replace("{{ASM_NAME}}", asmName);
-					writer.WriteStringValue(detokenizedRef);
+					var finalRef = refName.Replace("{{ASM_NAME}}", asmName);
+					writer.WriteStringValue(finalRef);
 				}
 				writer.WriteEndArray();
 			}
@@ -216,7 +167,6 @@ public static class TemplateGeneratorLogic
 			}
 		}
 
-		// Write versionDefines
 		if (versionDefines.Count > 0)
 		{
 			writer.WritePropertyName("versionDefines");
@@ -235,7 +185,49 @@ public static class TemplateGeneratorLogic
 		writer.WriteEndObject();
 		writer.Flush();
 
-		return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+		return Encoding.UTF8.GetString(stream.ToArray());
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string DerivePackageId(string assemblyName)
+	{
+		if (AssemblyToPackageMap.TryGetValue(assemblyName, out var pkg)) return pkg; // 1. Check direct map
+
+		var lower = assemblyName.ToLowerInvariant(); // 2. Heuristic: "Unity.Something" -> "com.unity.something", 3. Heuristic: "Company.Product" -> "com.company.product"
+
+		if (assemblyName.StartsWith("Unity.", StringComparison.OrdinalIgnoreCase))
+		{
+			return "com." + lower;
+		}
+
+		// Generic fallback for non-unity assemblies: try to make it look like a package. "My.Cool.Lib" -> "com.my.cool.lib" (Common convention) or just "my.cool.lib". However, usually referencing the exact assembly name works as a resource check in modern Unity if the assembly is within a package. But keeping "com." prefix is safer for package checks. If it looks like a package (contains dots), lowercase it.
+		if (lower.Contains('.'))
+		{
+			// If it doesn't start with com/net/org, prepend com.
+			if (!lower.StartsWith("com.") && !lower.StartsWith("net.") && !lower.StartsWith("org."))
+			{
+				return "com." + lower;
+			}
+			return lower;
+		}
+
+		return lower;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string DeriveDefineSymbol(string assemblyName)
+	{
+		if (assemblyName.Contains(":")) return "HAS_UNKNOWN_REF"; // 1. Remove "GUID:..." if present (rare in name fields but possible in raw data)
+
+		var sb = new StringBuilder("HAS_"); // 2. Convert to snake_case upper. "Unity.Entities" -> "HAS_UNITY_ENTITIES", "MyLib" -> "HAS_MYLIB"
+
+		foreach (var c in assemblyName)
+		{
+			if (c == '.') sb.Append('_');
+			else if (char.IsLetterOrDigit(c)) sb.Append(char.ToUpperInvariant(c));
+		}
+
+		return sb.ToString();
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -246,20 +238,18 @@ public static class TemplateGeneratorLogic
 		var asmName = GetAssemblyNameFromPackage(packageName);
 		var asmShortName = GetShortName(asmName);
 
-		var result = input
+		// Standard detokenization
+		return input
 			.Replace("{{PACKAGE_NAME}}", packageName)
 			.Replace("{{ASM_NAME}}", asmName)
 			.Replace("{{ASM_SHORT_NAME}}", asmShortName)
 			.Replace("{{PACKAGE_PASCAL_NAME}}", asmName);
-
-		return result;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static string DetokenizePath(string path, string packageName)
 	{
 		var asmName = GetAssemblyNameFromPackage(packageName);
-
 		return path
 			.Replace("{{PACKAGE_NAME}}", asmName)
 			.Replace("{{ASM_NAME}}", asmName)
@@ -278,11 +268,8 @@ public static class TemplateGeneratorLogic
 			var part = parts[i];
 			if (string.IsNullOrEmpty(part)) continue;
 
-			// Sanitize: Remove hyphens and convert to PascalCase
-			// e.g., "my-company" -> "MyCompany"
 			var sanitized = SanitizeToPascalCase(part);
-			if (result.Length > 0)
-				result.Append('.');
+			if (result.Length > 0) result.Append('.');
 			result.Append(sanitized);
 		}
 
@@ -293,21 +280,15 @@ public static class TemplateGeneratorLogic
 	private static string SanitizeToPascalCase(string input)
 	{
 		if (string.IsNullOrEmpty(input)) return input;
-
-		// Split by hyphens, capitalize each part, then join
 		var parts = input.Split('-', '_');
 		var result = new StringBuilder();
-
 		foreach (var part in parts)
 		{
 			if (string.IsNullOrEmpty(part)) continue;
-
-			// Capitalize first letter, make rest lowercase
 			var sanitized = char.ToUpper(part[0], CultureInfo.InvariantCulture) +
 				(part.Length > 1 ? part.Substring(1).ToLower(CultureInfo.InvariantCulture) : "");
 			result.Append(sanitized);
 		}
-
 		return result.Length > 0 ? result.ToString() : input;
 	}
 

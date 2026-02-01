@@ -37,44 +37,44 @@ public sealed class BuildPipeline : IPackageGenerator
 		var dirs = new List<VirtualDirectoryState>();
 
 		package.TryGetBasePath(out var basePath);
-		dirs.Add(new VirtualDirectoryState { Path = new string(basePath) });
+		dirs.Add(new VirtualDirectoryState { Path = basePath });
 
 		package.TryGetAsmDefRoot(out var asmdefRoot);
 
 		if (hasSubAssemblies)
 		{
-			AsmDefLogic.GetStandardSubAssemblies(package.PackageName.ToString(), out var subAssemblies);
+			AsmDefLogic.GetStandardSubAssemblies(package.PackageName, out var subAssemblies);
 			foreach (var sub in subAssemblies)
 			{
 				if (package.SubAssemblies.HasFlag(sub.Type))
 				{
-					dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, sub.Name.ToString())) });
+					dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, sub.Name) });
 				}
 			}
 		}
 		else if (package.HasModule(PackageModuleType.Runtime))
 		{
-			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, "Runtime")) });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, "Runtime") });
 		}
 
 		if (package.HasModule(PackageModuleType.Editor))
 		{
 			var editorFolder = hasSubAssemblies ? $"{asmdefRoot}.Editor" : "Editor";
-			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, editorFolder)) });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, editorFolder) });
 		}
 
 		if (package.HasModule(PackageModuleType.Tests))
 		{
 			var testsFolder = hasSubAssemblies ? $"{asmdefRoot}.Tests" : "Tests";
-			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, testsFolder)) });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, testsFolder) });
 		}
 
 		if (package.HasModule(PackageModuleType.Samples))
 		{
-			dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, "Samples~")) });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, "Samples~") });
 		}
 
-		dirs.Add(new VirtualDirectoryState { Path = new string(System.IO.Path.Combine(basePath, "Documentation~")) });
+		dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, "Documentation~") });
 
 		return dirs.ToArray();
 	}
@@ -86,51 +86,48 @@ public sealed class BuildPipeline : IPackageGenerator
 		package.TryGetBasePath(out var basePath);
 		package.TryGetAsmDefRoot(out var asmdefRoot);
 
-		// 1. Manifest, Readme, GitIgnore
-		files.Add(new VirtualFileState
+		files.Add(new VirtualFileState // 1. Manifest, Readme, GitIgnore
 		{
-			Path = new string(System.IO.Path.Combine(basePath, "package.json")),
-			Content = new string(GeneratePackageManifest(in package, in config))
+			Path = System.IO.Path.Combine(basePath, "package.json"),
+			Content = GeneratePackageManifest(in package, in config)
 		});
 
 		files.Add(new VirtualFileState
 		{
-			Path = new string(System.IO.Path.Combine(basePath, "README.md")),
-			Content = new string(GenerateReadme(in package))
+			Path = System.IO.Path.Combine(basePath, "README.md"),
+			Content = GenerateReadme(in package)
 		});
 
 		files.Add(new VirtualFileState
 		{
-			Path = new string(System.IO.Path.Combine(basePath, ".gitignore")),
-			Content = new string(GitLogic.GenerateGitIgnore())
+			Path = System.IO.Path.Combine(basePath, ".gitignore"),
+			Content = GitLogic.GenerateGitIgnore()
 		});
 
-		// 1.5. License and Changelog
-		if (package.License != LicenseType.None)
+		if (package.License != LicenseType.None) // 1.5. License and Changelog
 		{
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, "LICENSE.md")),
-				Content = new string(GitLogic.GenerateLicense(package.License, DateTime.Now.Year.ToString(), package.CompanyName))
+				Path = System.IO.Path.Combine(basePath, "LICENSE.md"),
+				Content = GitLogic.GenerateLicense(package.License, DateTime.Now.Year.ToString(), package.CompanyName)
 			});
 		}
 
 		files.Add(new VirtualFileState
 		{
-			Path = new string(System.IO.Path.Combine(basePath, "CHANGELOG.md")),
-			Content = new string(GitLogic.GenerateChangelog(package.PackageName, "1.0.0"))
+			Path = System.IO.Path.Combine(basePath, "CHANGELOG.md"),
+			Content = GitLogic.GenerateChangelog(package.PackageName, "1.0.0")
 		});
 
-		// 2. Generate AsmDefs
-		if (package.HasModule(PackageModuleType.Runtime) && !hasSubAssemblies)
+		if (package.HasModule(PackageModuleType.Runtime) && !hasSubAssemblies) // 2. Generate AsmDefs
 		{
 			AsmDefLogic.GetEcsReferences(in package.EcsPreset, out var refs);
 			var asmdefContent = AsmDefGenerationLogic.GenerateJson(asmdefRoot, refs, package.EcsPreset.EnableBurst);
 
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, "Runtime", $"{asmdefRoot}.asmdef")),
-				Content = new string(asmdefContent)
+				Path = System.IO.Path.Combine(basePath, "Runtime", $"{asmdefRoot}.asmdef"),
+				Content = asmdefContent
 			});
 		}
 
@@ -145,15 +142,14 @@ public sealed class BuildPipeline : IPackageGenerator
 			var editorFolder = hasSubAssemblies ? editorAsmdefName : "Editor";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, editorFolder, $"{editorAsmdefName}.asmdef")),
-				Content = new string(editorAsmdef)
+				Path = System.IO.Path.Combine(basePath, editorFolder, $"{editorAsmdefName}.asmdef"),
+				Content = editorAsmdef
 			});
 		}
 
-		// 3. Generate Code Templates
-		package.TryGetNamespace(out var ns);
-		var featureName = package.DisplayName.ToString();
-		var packageParts = package.PackageName.ToString().Split('.');
+		package.TryGetNamespace(out var ns); // 3. Generate Code Templates
+		var featureName = package.DisplayName;
+		var packageParts = package.PackageName.Split('.');
 		var baseName = packageParts.Length > 0 ? packageParts[^1] : "Feature";
 
 		if (package.SelectedTemplate.HasFlag(TemplateType.MonoBehaviour))
@@ -162,8 +158,8 @@ public sealed class BuildPipeline : IPackageGenerator
 			var runtimeFolder = hasSubAssemblies ? $"{asmdefRoot}.Runtime" : "Runtime";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, runtimeFolder, $"{featureName}Behavior.cs")),
-				Content = new string(code)
+				Path = System.IO.Path.Combine(basePath, runtimeFolder, $"{featureName}Behavior.cs"),
+				Content = code
 			});
 		}
 
@@ -173,8 +169,8 @@ public sealed class BuildPipeline : IPackageGenerator
 			var runtimeFolder = hasSubAssemblies ? $"{asmdefRoot}.Runtime" : "Runtime";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, runtimeFolder, $"{featureName}Config.cs")),
-				Content = new string(code)
+				Path = System.IO.Path.Combine(basePath, runtimeFolder, $"{featureName}Config.cs"),
+				Content = code
 			});
 		}
 
@@ -184,8 +180,8 @@ public sealed class BuildPipeline : IPackageGenerator
 			var systemsFolder = hasSubAssemblies ? $"{asmdefRoot}.Systems" : "Runtime";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, systemsFolder, $"{featureName}System.cs")),
-				Content = new string(code)
+				Path = System.IO.Path.Combine(basePath, systemsFolder, $"{featureName}System.cs"),
+				Content = code
 			});
 		}
 
@@ -195,8 +191,8 @@ public sealed class BuildPipeline : IPackageGenerator
 			var dataFolder = hasSubAssemblies ? $"{asmdefRoot}.Data" : "Runtime";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, dataFolder, $"{baseName}Component.cs")),
-				Content = new string(code)
+				Path = System.IO.Path.Combine(basePath, dataFolder, $"{baseName}Component.cs"),
+				Content = code
 			});
 		}
 
@@ -206,8 +202,8 @@ public sealed class BuildPipeline : IPackageGenerator
 			var authoringFolder = hasSubAssemblies ? $"{asmdefRoot}.Authoring" : "Authoring";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, authoringFolder, $"{baseName}Authoring.cs")),
-				Content = new string(code)
+				Path = System.IO.Path.Combine(basePath, authoringFolder, $"{baseName}Authoring.cs"),
+				Content = code
 			});
 		}
 
@@ -215,34 +211,31 @@ public sealed class BuildPipeline : IPackageGenerator
 		{
 			var componentName = $"{baseName}Component";
 
-			// Component Data
-			var componentCode = TemplateLogic.GenerateIComponentData(ns, componentName);
+			var componentCode = TemplateLogic.GenerateIComponentData(ns, componentName); // Component Data
 			var dataFolder = hasSubAssemblies ? $"{asmdefRoot}.Data" : "Runtime";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, dataFolder, $"{componentName}.cs")),
-				Content = new string(componentCode)
+				Path = System.IO.Path.Combine(basePath, dataFolder, $"{componentName}.cs"),
+				Content = componentCode
 			});
 
-			// Authoring
-			if (hasSubAssemblies)
+			if (hasSubAssemblies) // Authoring
 			{
 				var authoringNs = $"{ns}.Authoring";
 				var authoringCode = TemplateLogic.GenerateAuthoring(authoringNs, baseName, componentName);
 				files.Add(new VirtualFileState
 				{
-					Path = new string(System.IO.Path.Combine(basePath, $"{asmdefRoot}.Authoring", $"{baseName}Authoring.cs")),
-					Content = new string(authoringCode)
+					Path = System.IO.Path.Combine(basePath, $"{asmdefRoot}.Authoring", $"{baseName}Authoring.cs"),
+					Content = authoringCode
 				});
 			}
 
-			// System
-			var systemCode = TemplateLogic.GenerateSystemBase(ns, $"{baseName}System");
+			var systemCode = TemplateLogic.GenerateSystemBase(ns, $"{baseName}System"); // System
 			var systemsFolder = hasSubAssemblies ? $"{asmdefRoot}.Systems" : "Runtime";
 			files.Add(new VirtualFileState
 			{
-				Path = new string(System.IO.Path.Combine(basePath, systemsFolder, $"{baseName}System.cs")),
-				Content = new string(systemCode)
+				Path = System.IO.Path.Combine(basePath, systemsFolder, $"{baseName}System.cs"),
+				Content = systemCode
 			});
 		}
 
@@ -252,15 +245,14 @@ public sealed class BuildPipeline : IPackageGenerator
 	private static string GeneratePackageManifest(in PackageState package, in AppConfig config)
 	{
 		GitLogic.TryGetGitConfig(out var gitName, out var gitEmail);
-		var authorName = string.IsNullOrEmpty(gitName) || gitName == "Unknown" ? config.CompanyName.ToString() : gitName;
+		var authorName = string.IsNullOrEmpty(gitName) || gitName == "Unknown" ? config.CompanyName : gitName;
 		var authorEmail = gitEmail == "unknown@local" ? "" : gitEmail;
 
 		var authorObj = string.IsNullOrEmpty(authorEmail)
 			? $"{{\"name\": \"{authorName}\"}}"
 			: $"{{\"name\": \"{authorName}\", \"email\": \"{authorEmail}\"}}";
 
-		// Build dependencies object
-		var deps = string.Empty;
+		var deps = string.Empty; // Build dependencies object
 		if (package.Dependencies != null && package.Dependencies.Count > 0)
 		{
 			deps = ",\n\t\"dependencies\": {";
@@ -278,11 +270,11 @@ public sealed class BuildPipeline : IPackageGenerator
 
 		return $$"""
 		{
-			"name": "{{package.PackageName.ToString()}}",
+			"name": "{{package.PackageName}}",
 			"version": "1.0.0",
-			"displayName": "{{package.DisplayName.ToString()}}",
-			"description": "{{package.Description.ToString()}}",
-			"unity": "{{config.DefaultUnityVersion.ToString()}}",
+			"displayName": "{{package.DisplayName}}",
+			"description": "{{package.Description}}",
+			"unity": "{{config.DefaultUnityVersion}}",
 			"author": {{authorObj}}{{deps}}{{samples}}
 		}
 		""";
@@ -290,6 +282,6 @@ public sealed class BuildPipeline : IPackageGenerator
 
 	private static string GenerateReadme(in PackageState package)
 	{
-		return $"# {package.DisplayName.ToString()}\n\n{package.Description.ToString()}";
+		return $"# {package.DisplayName}\n\n{package.Description}";
 	}
 }

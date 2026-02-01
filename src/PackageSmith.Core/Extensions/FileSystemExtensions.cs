@@ -20,13 +20,13 @@ public static class FileSystemExtensions
 	{
 		try
 		{
-			var dir = System.IO.Path.GetDirectoryName(file.Path.ToString());
+			var dir = System.IO.Path.GetDirectoryName(file.Path);
 			if (!string.IsNullOrEmpty(dir))
 			{
 				dir.TryEnsureDirectory();
 			}
 
-			FileSystemLogic.WriteFile(file.Path.ToString(), file.Content.ToString());
+			FileSystemLogic.WriteFile(file.Path, file.Content);
 			return true;
 		}
 		catch
@@ -49,7 +49,7 @@ public static class FileSystemExtensions
 	{
 		try
 		{
-			FileSystemLogic.CreateDirectory(directory.Path.ToString());
+			FileSystemLogic.CreateDirectory(directory.Path);
 			return true;
 		}
 		catch

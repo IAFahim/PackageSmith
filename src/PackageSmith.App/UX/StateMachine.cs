@@ -15,8 +15,6 @@ public static class StateMachine
 	{
 		while (true)
 		{
-			ShowBanner();
-
 			var choice = AnsiConsole.Prompt(
 				new SelectionPrompt<string>()
 					.AddChoices(new[] { "New Package", "Template Harvester", "Browse Templates", "Exit" }));
@@ -52,8 +50,7 @@ public static class StateMachine
 			return;
 		}
 
-		// Original flow - from scratch
-		NewPackageFromScratchFlow();
+		NewPackageFromScratchFlow(); // Original flow - from scratch
 	}
 
 	private static void NewPackageFromTemplateFlow()
@@ -62,14 +59,15 @@ public static class StateMachine
 
 		var name = AnsiConsole.Ask<string>("[dim]Package name[/] (e.g. [cyan]com.studio.tool[/]):");
 
-		// Get available templates
-		var templatesDir = Path.Combine(GetAppDataPath(), "PackageSmith", "Templates");
+		var templatesDir = Path.Combine(GetAppDataPath(), "PackageSmith", "Templates"); // Get available templates
 		var templateName = "From Scratch"; // default
 
 		if (Directory.Exists(templatesDir))
 		{
 			var templates = Directory.GetDirectories(templatesDir)
 				.Select(Path.GetFileName)
+				.Where(x => x != null)
+				.Select(x => x!)
 				.OrderBy(x => x)
 				.ToList();
 
@@ -88,7 +86,7 @@ public static class StateMachine
 			}
 		}
 
-		var templatePath = Path.Combine(templatesDir, templateName);
+		var templatePath = Path.Combine(templatesDir, templateName ?? string.Empty);
 		var outputPath = Path.Combine(Environment.CurrentDirectory, name);
 
 		if (!TemplateGeneratorLogic.TryGenerateFromTemplate(templatePath, outputPath, name, out var fileCount))
@@ -153,7 +151,7 @@ public static class StateMachine
 		AnsiConsole.MarkupLine("[bold white]Template Harvester[/]\n");
 		AnsiConsole.MarkupLine("[dim]Convert an existing package into a reusable template.[/]\n");
 
-		var sourcePath = AnsiConsole.Ask<string>("[dim]Source package path[/]:");
+		var sourcePath = AnsiConsole.Ask<string>("[dim]Source package path[/]:", Environment.CurrentDirectory);
 		var templateName = AnsiConsole.Ask<string>("[dim]Template name[/]:", "Custom.Template");
 
 		if (!Directory.Exists(sourcePath))
@@ -258,10 +256,9 @@ public static class StateMachine
 			var selectedTemplate = AnsiConsole.Prompt(
 				new SelectionPrompt<string>()
 					.Title("Select template:")
-					.AddChoices(templates.Select(Path.GetFileName).OrderBy(x => x).Where(x => x != null)!));
+					.AddChoices(templates.Select(Path.GetFileName).Where(x => x != null).Select(x => x!)));
 
-			// Ask for package name and create
-			var packageName = AnsiConsole.Ask<string>("\n[dim]Package name[/]:");
+			var packageName = AnsiConsole.Ask<string>("\n[dim]Package name[/]:"); // Ask for package name and create
 			var fullOutputPath = Path.Combine(Environment.CurrentDirectory, packageName);
 
 			if (TemplateGeneratorLogic.TryGenerateFromTemplate(

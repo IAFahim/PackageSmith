@@ -24,5 +24,5 @@ public struct AppConfig
 	[JsonPropertyName("lastUpdatedTicks")]
 	public long LastUpdatedTicks;
 
-	public override readonly string ToString() => $"[Config] {CompanyName.ToString()} | {DefaultUnityVersion.ToString()}";
+	public readonly override string ToString() => $"[Config] {CompanyName} | {DefaultUnityVersion}";
 }

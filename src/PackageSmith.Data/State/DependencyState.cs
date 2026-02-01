@@ -13,5 +13,5 @@ public struct DependencyState
 	public DependencyType Type;
 	public string Url;
 
-	public override readonly string ToString() => $"[Dep] {Name.ToString()} {Version.ToString()}";
+	public override readonly string ToString() => $"[Dep] {Name} {Version}";
 }
