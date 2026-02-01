@@ -17,11 +17,13 @@ public static class TemplateHarvesterLogic
 		if (Directory.Exists(outputTemplatePath)) Directory.Delete(outputTemplatePath, true);
 		Directory.CreateDirectory(outputTemplatePath);
 
+		// Extract root assembly name from first .asmdef
+		var rootAsmName = ExtractRootAssemblyName(sourcePath);
+
 		var files = Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories);
 
 		foreach (var file in files)
 		{
-			// Skip files in ignored directories
 			if (file.Contains("/.git/") || file.Contains("\\.git\\")) continue;
 
 			var fileName = Path.GetFileName(file);
@@ -33,7 +35,7 @@ public static class TemplateHarvesterLogic
 			if (action == FileAction.Keep || action == FileAction.Tokenize)
 			{
 				var relativePath = Path.GetRelativePath(sourcePath, file);
-				var tokenizedPath = TokenizeString(relativePath, sourcePackageName);
+				var tokenizedPath = TokenizeString(relativePath, sourcePackageName, rootAsmName);
 				var destFile = Path.Combine(outputTemplatePath, tokenizedPath);
 
 				Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
@@ -41,7 +43,7 @@ public static class TemplateHarvesterLogic
 				if (action == FileAction.Tokenize)
 				{
 					var content = File.ReadAllText(file);
-					var tokenizedContent = TokenizeString(content, sourcePackageName);
+					var tokenizedContent = TokenizeString(content, sourcePackageName, rootAsmName);
 					File.WriteAllText(destFile, tokenizedContent);
 				}
 				else
@@ -67,6 +69,7 @@ public static class TemplateHarvesterLogic
 		{
 			".cs" => AnalyzeCSharpFile(filePath),
 			".asmdef" => FileAction.Tokenize,
+			".asmref" => FileAction.Keep,
 			".json" => FileAction.Tokenize,
 			".md" => FileAction.Tokenize,
 			".meta" => FileAction.Drop,
@@ -102,22 +105,51 @@ public static class TemplateHarvesterLogic
 
 	private static bool IsIgnoredFile(string fileName)
 	{
-		if (fileName.StartsWith(".")) return true; // .git, .DS_Store, etc
+		if (fileName.StartsWith(".")) return true;
 		return false;
 	}
 
-	private static bool IsIgnoredDirectory(string dirPath)
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string ExtractRootAssemblyName(string sourcePath)
 	{
-		var dirName = Path.GetFileName(dirPath);
-		return dirName.Equals(".git", StringComparison.OrdinalIgnoreCase);
+		try
+		{
+			var dirs = Directory.GetDirectories(sourcePath);
+			foreach (var dir in dirs)
+			{
+				var asmdefs = Directory.GetFiles(dir, "*.asmdef");
+				if (asmdefs.Length > 0)
+				{
+					var content = File.ReadAllText(asmdefs[0]);
+					var doc = System.Text.Json.JsonDocument.Parse(content);
+					if (doc.RootElement.TryGetProperty("name", out var nameProp))
+						return nameProp.GetString() ?? string.Empty;
+				}
+			}
+		}
+		catch { /* Ignore */ }
+
+		return string.Empty;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static string TokenizeString(string input, string sourcePackageName)
+	private static string TokenizeString(string input, string sourcePackageName, string rootAsmName)
 	{
 		if (string.IsNullOrEmpty(input)) return input;
 
 		var result = input.Replace(sourcePackageName, "{{PACKAGE_NAME}}");
+
+		if (!string.IsNullOrEmpty(rootAsmName))
+		{
+			result = result.Replace(rootAsmName, "{{ASM_NAME}}");
+
+			var parts = rootAsmName.Split('.');
+			if (parts.Length > 0)
+			{
+				var shortName = parts[^1];
+				result = result.Replace(shortName, "{{ASM_SHORT_NAME}}");
+			}
+		}
 
 		return result;
 	}
