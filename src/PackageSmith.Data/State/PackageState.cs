@@ -20,6 +20,7 @@ public struct PackageState
 	public bool EnableSubAssemblies;
 	public int DependencyCount;
 	public TemplateType SelectedTemplate;
+	public LicenseType License;
 
 	public override readonly string ToString() => $"[Package] {PackageName.ToString()} ({DisplayName.ToString()})";
 }

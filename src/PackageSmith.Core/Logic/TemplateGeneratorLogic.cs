@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -90,7 +91,7 @@ public static class TemplateGeneratorLogic
 		processedFiles = 0;
 		if (!Directory.Exists(templatePath)) return false;
 
-		if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
+		if (Directory.Exists(outputPath)) return false; // SAFETY: Never auto-delete existing directories
 		Directory.CreateDirectory(outputPath);
 
 		var files = Directory.EnumerateFiles(templatePath, "*", SearchOption.AllDirectories);
@@ -271,13 +272,37 @@ public static class TemplateGeneratorLogic
 			var part = parts[i];
 			if (string.IsNullOrEmpty(part)) continue;
 
-			var pascal = char.ToUpper(part[0]) + (part.Length > 1 ? part.Substring(1) : "");
+			// Sanitize: Remove hyphens and convert to PascalCase
+			// e.g., "my-company" -> "MyCompany"
+			var sanitized = SanitizeToPascalCase(part);
 			if (result.Length > 0)
 				result.Append('.');
-			result.Append(pascal);
+			result.Append(sanitized);
 		}
 
 		return result.Length > 0 ? result.ToString() : "MyNamespace";
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string SanitizeToPascalCase(string input)
+	{
+		if (string.IsNullOrEmpty(input)) return input;
+
+		// Split by hyphens, capitalize each part, then join
+		var parts = input.Split('-', '_');
+		var result = new StringBuilder();
+
+		foreach (var part in parts)
+		{
+			if (string.IsNullOrEmpty(part)) continue;
+
+			// Capitalize first letter, make rest lowercase
+			var sanitized = char.ToUpper(part[0], CultureInfo.InvariantCulture) +
+				(part.Length > 1 ? part.Substring(1).ToLower(CultureInfo.InvariantCulture) : "");
+			result.Append(sanitized);
+		}
+
+		return result.Length > 0 ? result.ToString() : input;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
