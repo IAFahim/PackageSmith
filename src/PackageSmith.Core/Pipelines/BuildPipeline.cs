@@ -66,13 +66,23 @@ public sealed class BuildPipeline : IPackageGenerator
 
 		if (package.HasModule(PackageModuleType.Tests))
 		{
-			var testsFolder = hasSubAssemblies ? $"{asmdefRoot}.Tests" : "Tests";
-			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, testsFolder) });
+			var testsRoot = hasSubAssemblies ? $"{asmdefRoot}.Tests" : "Tests";
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, testsRoot) });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, testsRoot, "Editor") });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, testsRoot, "Runtime") });
 		}
 
 		if (package.HasModule(PackageModuleType.Samples))
 		{
-			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, "Samples~") });
+			var samplesPath = System.IO.Path.Combine(basePath, "Samples~");
+			dirs.Add(new VirtualDirectoryState { Path = samplesPath });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(samplesPath, "Basic") });
+			dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(samplesPath, "Advanced") });
+			
+			if (package.EcsPreset.EnableEntities || package.EcsPreset.EnableBurst)
+			{
+				dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(samplesPath, "ECS") });
+			}
 		}
 
 		dirs.Add(new VirtualDirectoryState { Path = System.IO.Path.Combine(basePath, "Documentation~") });
@@ -101,6 +111,12 @@ public sealed class BuildPipeline : IPackageGenerator
 
 		files.Add(new VirtualFileState
 		{
+			Path = System.IO.Path.Combine(basePath, "Documentation~", $"{package.PackageName}.md"),
+			Content = $"# {package.DisplayName} Documentation\n\nDetailed documentation for {package.PackageName}."
+		});
+
+		files.Add(new VirtualFileState
+		{
 			Path = System.IO.Path.Combine(basePath, ".gitignore"),
 			Content = GitLogic.GenerateGitIgnore()
 		});
@@ -120,10 +136,27 @@ public sealed class BuildPipeline : IPackageGenerator
 			Content = GitLogic.GenerateChangelog(package.PackageName, "1.0.0")
 		});
 
+		files.Add(new VirtualFileState
+		{
+			Path = System.IO.Path.Combine(basePath, "Third Party Notices.md"),
+			Content = GenerateThirdPartyNotices(in package)
+		});
+
+		if (package.HasModule(PackageModuleType.Samples))
+		{
+			files.Add(new VirtualFileState
+			{
+				Path = System.IO.Path.Combine(basePath, "Samples~", "Basic", "SampleScript.cs"),
+				Content = "// Basic sample script\npublic class SampleScript {}\n"
+			});
+		}
+
 		if (package.HasModule(PackageModuleType.Runtime) && !hasSubAssemblies) // 2. Generate AsmDefs
 		{
 			AsmDefLogic.GetEcsReferences(in package.EcsPreset, out var refs);
-			var asmdefContent = AsmDefGenerationLogic.GenerateJson(asmdefRoot, refs, package.EcsPreset.EnableBurst);
+			var refNames = refs.Select(r => r.Name).ToArray();
+			var defines = AsmDefGenerationLogic.GenerateVersionDefines(refNames, package.PackageName);
+			var asmdefContent = AsmDefGenerationLogic.GenerateJson(asmdefRoot, refs, package.EcsPreset.EnableBurst, defines);
 
 			files.Add(new VirtualFileState
 			{
@@ -139,13 +172,49 @@ public sealed class BuildPipeline : IPackageGenerator
 				? SubAssemblyLogic.GetRuntimeAssemblies(package.SubAssemblies, asmdefRoot)
 				: new[] { asmdefRoot };
 
-			var editorAsmdef = AsmDefGenerationLogic.GenerateEditorJson(editorAsmdefName, runtimeRefs);
+			var defines = AsmDefGenerationLogic.GenerateVersionDefines(runtimeRefs, package.PackageName);
+			var editorAsmdef = AsmDefGenerationLogic.GenerateEditorJson(editorAsmdefName, runtimeRefs, defines);
 			var editorFolder = hasSubAssemblies ? editorAsmdefName : "Editor";
 			files.Add(new VirtualFileState
 			{
 				Path = System.IO.Path.Combine(basePath, editorFolder, $"{editorAsmdefName}.asmdef"),
 				Content = editorAsmdef
 			});
+		}
+
+		if (package.HasModule(PackageModuleType.Tests))
+		{
+			var testsRoot = hasSubAssemblies ? $"{asmdefRoot}.Tests" : "Tests";
+			var runtimeAsm = asmdefRoot;
+			var editorAsm = $"{asmdefRoot}.Editor";
+
+			// Runtime Tests
+			var runtimeTestsName = $"{asmdefRoot}.Tests";
+			var runtimeTestsRefs = new[] { runtimeAsm };
+			var runtimeTestsDefines = AsmDefGenerationLogic.GenerateVersionDefines(runtimeTestsRefs, package.PackageName);
+			// PlayMode tests run on all platforms
+			var runtimeTestsJson = AsmDefGenerationLogic.GenerateTestsJson(runtimeTestsName, runtimeTestsRefs, Array.Empty<string>(), Array.Empty<string>(), runtimeTestsDefines); 
+			
+			files.Add(new VirtualFileState
+			{
+				Path = System.IO.Path.Combine(basePath, testsRoot, "Runtime", $"{runtimeTestsName}.asmdef"),
+				Content = runtimeTestsJson
+			});
+
+			// Editor Tests
+			if (package.HasModule(PackageModuleType.Editor))
+			{
+				var editorTestsName = $"{asmdefRoot}.Editor.Tests";
+				var editorTestsRefs = new[] { runtimeAsm, editorAsm };
+				var editorTestsDefines = AsmDefGenerationLogic.GenerateVersionDefines(editorTestsRefs, package.PackageName);
+				var editorTestsJson = AsmDefGenerationLogic.GenerateTestsJson(editorTestsName, new[] { runtimeAsm }, new[] { editorAsm }, new[] { "Editor" }, editorTestsDefines);
+
+				files.Add(new VirtualFileState
+				{
+					Path = System.IO.Path.Combine(basePath, testsRoot, "Editor", $"{editorTestsName}.asmdef"),
+					Content = editorTestsJson
+				});
+			}
 		}
 
 		package.TryGetNamespace(out var ns); // 3. Generate Code Templates
@@ -240,6 +309,17 @@ public sealed class BuildPipeline : IPackageGenerator
 			});
 		}
 
+		if (package.SelectedTemplate.HasFlag(TemplateType.DodFull))
+		{
+			var code = TemplateLogic.GenerateDodFull(ns, baseName);
+			var runtimeFolder = hasSubAssemblies ? $"{asmdefRoot}.Runtime" : "Runtime";
+			files.Add(new VirtualFileState
+			{
+				Path = System.IO.Path.Combine(basePath, runtimeFolder, $"{baseName}System.cs"),
+				Content = code
+			});
+		}
+
 		return files.ToArray();
 	}
 
@@ -267,7 +347,22 @@ public sealed class BuildPipeline : IPackageGenerator
 			deps += "\n\t}";
 		}
 
-		var samples = package.HasModule(PackageModuleType.Samples) ? ",\n\t\"samples\": [{{\"displayName\": \"Demo\", \"path\": \"Samples~/Demo\"}}]" : "";
+		var samples = string.Empty;
+		if (package.HasModule(PackageModuleType.Samples))
+		{
+			var sampleList = new List<string>
+			{
+				"{\"displayName\": \"Basic Setup\", \"description\": \"Basic usage examples\", \"path\": \"Samples~/Basic\"}",
+				"{\"displayName\": \"Advanced Techniques\", \"description\": \"Advanced features and optimization\", \"path\": \"Samples~/Advanced\"}"
+			};
+
+			if (package.EcsPreset.EnableEntities || package.EcsPreset.EnableBurst)
+			{
+				sampleList.Add("{\"displayName\": \"ECS Examples\", \"description\": \"Data-oriented design samples\", \"path\": \"Samples~/ECS\"}");
+			}
+
+			samples = ",\n\t\"samples\": [\n\t\t" + string.Join(",\n\t\t", sampleList) + "\n\t]";
+		}
 
 		return $$"""
 		{
@@ -276,13 +371,70 @@ public sealed class BuildPipeline : IPackageGenerator
 			"displayName": "{{package.DisplayName}}",
 			"description": "{{package.Description}}",
 			"unity": "{{config.DefaultUnityVersion}}",
-			"author": {{authorObj}}{{deps}}{{samples}}
+			"author": {{authorObj}},
+			"documentationUrl": "https://github.com/{{authorName.Replace(" ", "")}}/{{package.PackageName}}"{{deps}}{{samples}}
 		}
 		""";
 	}
 
 	private static string GenerateReadme(in PackageState package)
 	{
-		return $"# {package.DisplayName}\n\n{package.Description}";
+		return $$"""
+		# {{package.DisplayName}}
+
+		{{package.Description}}
+
+		## Package Contents
+		- **Runtime**: Core logic and systems.
+		- **Editor**: Unity Editor extensions and tools.
+		- **Tests**: Automated tests for ensuring stability.
+		- **Samples**: Example implementations and use cases.
+
+		## Installation
+		To install this package, use the Unity Package Manager and point to the Git URL or local folder.
+
+		## Requirements
+		- Unity {{package.UnityVersion}} or newer.
+
+		## Limitations
+		- [List any known limitations here]
+
+		## Workflows
+		1. [Step 1]
+		2. [Step 2]
+
+		## Reference
+		- [Detailed API or property descriptions]
+
+		## Documentation
+		Additional documentation can be found in the `Documentation~` folder.
+		""";
+	}
+
+	private static string GenerateThirdPartyNotices(in PackageState package)
+	{
+		var sb = new System.Text.StringBuilder();
+		sb.AppendLine("# Third Party Notices");
+		sb.AppendLine();
+		sb.AppendLine("This package contains third-party software components governed by the license(s) indicated below:");
+		sb.AppendLine();
+
+		if (package.Dependencies != null && package.Dependencies.Count > 0)
+		{
+			foreach (var dep in package.Dependencies)
+			{
+				sb.AppendLine($"Component Name: {dep.Name}");
+				sb.AppendLine($"License Type: \"MIT\""); // Placeholder license
+				sb.AppendLine($"Version Number: {dep.Version}");
+				sb.AppendLine($"[License Link](https://github.com/unity-package-manager/{dep.Name})");
+				sb.AppendLine();
+			}
+		}
+		else
+		{
+			sb.AppendLine("No third-party components are currently listed.");
+		}
+
+		return sb.ToString();
 	}
 }

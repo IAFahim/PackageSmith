@@ -5,5 +5,6 @@ public enum LicenseType
 	None,
 	Mit,
 	Apache20,
-	Proprietary
+	Proprietary,
+	UnityCompanion
 }

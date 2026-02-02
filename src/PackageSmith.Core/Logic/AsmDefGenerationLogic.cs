@@ -22,6 +22,101 @@ public static class AsmDefGenerationLogic
 			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 	};
 
+	private static readonly Dictionary<string, string> AssemblyToPackageMap = new()
+	{
+		["Unity.InputSystem"] = "com.unity.input.system",
+		["Unity.Physics"] = "com.unity.physics",
+		["Unity.CharacterController"] = "com.unity.charactercontroller",
+		["Unity.Entities"] = "com.unity.entities",
+		["Unity.Entities.Graphics"] = "com.unity.entities.graphics",
+		["Unity.Entities.Hybrid"] = "com.unity.entities.hybrid",
+		["Unity.Collections"] = "com.unity.collections",
+		["Unity.Mathematics"] = "com.unity.mathematics",
+		["Unity.Burst"] = "com.unity.burst",
+		["Unity.Jobs"] = "com.unity.jobs",
+		["Unity.NetCode"] = "com.unity.netcode.gameobjects",
+		["Unity.Networking.Transport"] = "com.unity.transport",
+		["Unity.RenderPipelines.Core"] = "com.unity.render-pipelines.core",
+		["Unity.RenderPipelines.Universal.Runtime"] = "com.unity.render-pipelines.universal",
+		["Unity.RenderPipelines.HighDefinition.Runtime"] = "com.unity.render-pipelines.high-definition",
+		["Unity.Addressables"] = "com.unity.addressables",
+		["Unity.TextMeshPro"] = "com.unity.textmeshpro",
+	};
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string DerivePackageId(string assemblyName)
+	{
+		if (AssemblyToPackageMap.TryGetValue(assemblyName, out var pkg)) return pkg;
+
+		var lower = assemblyName.ToLowerInvariant();
+		if (assemblyName.StartsWith("Unity.", StringComparison.OrdinalIgnoreCase)) return "com." + lower;
+
+		if (lower.Contains('.'))
+		{
+			if (!lower.StartsWith("com.") && !lower.StartsWith("net.") && !lower.StartsWith("org."))
+				return "com." + lower;
+			return lower;
+		}
+		return lower;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string DeriveDefineSymbol(string assemblyName)
+	{
+		if (assemblyName.Contains(":")) return "HAS_UNKNOWN_REF";
+		var sb = new System.Text.StringBuilder("HAS_");
+		foreach (var c in assemblyName)
+		{
+			if (c == '.') sb.Append('_');
+			else if (char.IsLetterOrDigit(c)) sb.Append(char.ToUpperInvariant(c));
+		}
+		return sb.ToString();
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static VersionDefine[] GenerateVersionDefines(IEnumerable<string> references, string? selfPackageId = null, VersionDefine[]? existingDefines = null)
+	{
+		var defines = new List<VersionDefine>();
+		var knownIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		if (existingDefines != null)
+		{
+			foreach (var d in existingDefines)
+			{
+				defines.Add(d);
+				knownIds.Add(d.Name);
+			}
+		}
+
+		// Add self-define if requested (Forced Conditional Access)
+		if (!string.IsNullOrEmpty(selfPackageId) && !knownIds.Contains(selfPackageId))
+		{
+			defines.Add(new VersionDefine
+			{
+				Name = selfPackageId,
+				Expression = "0.0.1",
+				Define = DeriveDefineSymbol(selfPackageId.Contains('.') ? selfPackageId.Split('.').Last() : selfPackageId) 
+			});
+			knownIds.Add(selfPackageId);
+		}
+
+		foreach (var refName in references)
+		{
+			var packageId = DerivePackageId(refName);
+			if (knownIds.Contains(packageId)) continue;
+
+			defines.Add(new VersionDefine
+			{
+				Name = packageId,
+				Expression = "0.0.1",
+				Define = DeriveDefineSymbol(refName)
+			});
+			knownIds.Add(packageId);
+		}
+
+		return defines.ToArray();
+	}
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string GenerateJson(string name, ReferenceState[] references, bool allowUnsafe, VersionDefine[]? versionDefines = null)
 	{
@@ -71,7 +166,7 @@ public static class AsmDefGenerationLogic
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static string GenerateTestsJson(string name, string[] runtimeReferences, string[] editorReferences)
+	public static string GenerateTestsJson(string name, string[] runtimeReferences, string[] editorReferences, string[]? includePlatforms = null, VersionDefine[]? versionDefines = null)
 	{
 		var allRefs = runtimeReferences.Concat(editorReferences).ToArray();
 
@@ -79,15 +174,17 @@ public static class AsmDefGenerationLogic
 		{
 			name = name,
 			references = allRefs.Length > 0 ? allRefs : null,
-			includePlatforms = (string?)null,
-			excludePlatforms = new[] { "Editor" },
+			includePlatforms = includePlatforms ?? new[] { "Editor" }, // Default to Editor-only tests if not specified
+			excludePlatforms = Array.Empty<string>(),
 			allowUnsafeCode = false,
 			autoReferenced = false,
-			overrideReferences = false,
+			overrideReferences = true,
 			noEngineReferences = false,
 			precompiledReferences = new[] { "nunit.framework.dll" },
-			defineConstraints = Array.Empty<string>(),
-			versionDefines = new[] { new { @if = new[] { "UNITY_EDITOR" } } }
+			defineConstraints = new[] { "UNITY_INCLUDE_TESTS" },
+			versionDefines = versionDefines != null && versionDefines.Length > 0
+				? versionDefines.Select(v => new { name = v.Name, expression = v.Expression, define = v.Define }).ToArray()
+				: Array.Empty<object>()
 		};
 
 		return JsonSerializer.Serialize(model, JsonOptions);

@@ -96,8 +96,8 @@ public static class TemplateHarvesterLogic
 			}
 		}
 
-		// 4. Ensure package.json exists
-		EnsurePackageJson(outputTemplatePath, metadata);
+		// 4. Ensure package.json exists and is valid
+		PostProcessPackageJson(outputTemplatePath, metadata);
 
 		return true;
 	}
@@ -165,27 +165,72 @@ public static class TemplateHarvesterLogic
 		return string.Join('/', parts);
 	}
 
-	private static void EnsurePackageJson(string outputRoot, PackageMetadata metadata)
+	private static void PostProcessPackageJson(string outputRoot, PackageMetadata metadata)
 	{
 		var path = Path.Combine(outputRoot, "package.json");
-		if (File.Exists(path)) return; // Already exists
+		string jsonContent;
 
-		// Create a minimal package.json
-		var json = """
+		if (!File.Exists(path))
 		{
-		  "name": "{{PACKAGE_NAME}}",
-		  "version": "{{VERSION}}",
-		  "displayName": "{{DISPLAY_NAME}}",
-		  "description": "{{DESCRIPTION}}",
-		  "unity": "{{UNITY_VERSION}}",
-		  "author": {
-		    "name": "{{AUTHOR_NAME}}",
-		    "email": "{{AUTHOR_EMAIL}}"
-		  }
+			// Create a minimal package.json
+			jsonContent = """
+			{
+			  "name": "{{PACKAGE_NAME}}",
+			  "version": "{{VERSION}}",
+			  "displayName": "{{DISPLAY_NAME}}",
+			  "description": "{{DESCRIPTION}}",
+			  "unity": "{{UNITY_VERSION}}",
+			  "author": {
+			    "name": "{{AUTHOR_NAME}}",
+			    "email": "{{AUTHOR_EMAIL}}"
+			  }
+			}
+			""";
 		}
-		""";
+		else
+		{
+			jsonContent = File.ReadAllText(path);
+		}
 
-		File.WriteAllText(path, json);
+		// Inject Samples if present in directory but missing in JSON
+		var samplesDir = Path.Combine(outputRoot, "Samples~");
+		if (Directory.Exists(samplesDir))
+		{
+			try
+			{
+				using var doc = JsonDocument.Parse(jsonContent);
+				if (!doc.RootElement.TryGetProperty("samples", out _))
+				{
+					// Found Samples~ but no samples entry in JSON. Inject it.
+					var subDirs = Directory.GetDirectories(samplesDir);
+					if (subDirs.Length > 0)
+					{
+						var samplesList = new List<object>();
+						foreach (var dir in subDirs)
+						{
+							var dirName = Path.GetFileName(dir);
+							samplesList.Add(new
+							{
+								displayName = ToDisplayName(dirName),
+								description = $"Samples for {dirName}",
+								path = $"Samples~/{dirName}"
+							});
+						}
+						
+						// Deserialize to dictionary to modify
+						var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonContent);
+						if (dict != null)
+						{
+							dict["samples"] = samplesList;
+							jsonContent = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
+						}
+					}
+				}
+			}
+			catch { /* Ignore invalid JSON */ }
+		}
+
+		File.WriteAllText(path, jsonContent);
 	}
 
 	private static bool ShouldSkip(string filePath, string rootPath)
@@ -490,6 +535,30 @@ public static class TemplateHarvesterLogic
 						// Write empty array for keywords
 						writer.WritePropertyName(name);
 						writer.WriteStartArray();
+						writer.WriteEndArray();
+						break;
+
+					case "samples":
+						writer.WritePropertyName(name);
+						writer.WriteStartArray();
+						if (prop.Value.ValueKind == JsonValueKind.Array)
+						{
+							foreach (var sample in prop.Value.EnumerateArray())
+							{
+								if (sample.ValueKind == JsonValueKind.Object)
+								{
+									writer.WriteStartObject();
+									foreach (var sProp in sample.EnumerateObject())
+									{
+										var sVal = sProp.Value.ToString();
+										// Light tokenization for sample properties
+										if (metadata.PackageName != "{{PACKAGE_NAME}}") sVal = sVal.Replace(metadata.PackageName, "{{PACKAGE_NAME}}");
+										writer.WriteString(sProp.Name, sVal);
+									}
+									writer.WriteEndObject();
+								}
+							}
+						}
 						writer.WriteEndArray();
 						break;
 

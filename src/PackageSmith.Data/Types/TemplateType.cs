@@ -15,5 +15,6 @@ public enum TemplateType
 	ISharedComponentData = 1 << 6,
 	Baker = 1 << 7,
 	Authoring = 1 << 8,
-	EcsFull = 1 << 9
+	EcsFull = 1 << 9,
+	DodFull = 1 << 10
 }

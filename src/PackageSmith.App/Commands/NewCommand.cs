@@ -68,7 +68,10 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 		}
 
 		// 2. Route based on selection
-		if (!string.IsNullOrEmpty(selectedTemplate))
+		if (!string.IsNullOrEmpty(selectedTemplate) && 
+		    !selectedTemplate.Equals("standard", StringComparison.OrdinalIgnoreCase) &&
+		    !selectedTemplate.Equals("empty", StringComparison.OrdinalIgnoreCase) &&
+		    !selectedTemplate.Equals("none", StringComparison.OrdinalIgnoreCase))
 		{
 			return CreateFromTemplate(settings, selectedTemplate);
 		}

@@ -12,5 +12,5 @@ public struct PackageCapabilityState
 	public bool HasNativePlugins;
 	public bool HasWebGL;
 
-	public override readonly string ToString() => $"[Caps] Play:{HasPlayModeTests} Edit:{HasEditModeTests} Native:{HasNativePlugins}";
+	public override readonly string ToString() => $"(Caps) Play:{HasPlayModeTests} Edit:{HasEditModeTests} Native:{HasNativePlugins}";
 }

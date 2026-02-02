@@ -227,15 +227,22 @@ public static class TemplateGeneratorLogic
 			}
 		}
 
+		// Add self-define (Forced Conditional Access)
+		if (!versionDefines.ContainsKey(packageName))
+		{
+			var selfDefine = AsmDefGenerationLogic.DeriveDefineSymbol(packageName.Contains('.') ? packageName.Split('.').Last() : packageName);
+			versionDefines[packageName] = ("0.0.1", selfDefine);
+		}
+
 		foreach (var refName in references) // 3. Auto-Generate Version Defines for ALL References
 		{
-			var packageId = DerivePackageId(refName); // Skip if this reference already has a rule in existing versionDefines. Note: versionDefines usually target Package IDs, but refs are Assembly Names. We check if we have a mapped package ID that is already defined.
+			var packageId = AsmDefGenerationLogic.DerivePackageId(refName); 
 
 			if (versionDefines.ContainsKey(packageId)) continue;
 
-			var defineSymbol = DeriveDefineSymbol(refName); // Create Define Symbol
+			var defineSymbol = AsmDefGenerationLogic.DeriveDefineSymbol(refName); 
 
-			versionDefines[packageId] = ("0.0.1", defineSymbol); // Add to list (Expression 0.0.1 means "if present")
+			versionDefines[packageId] = ("0.0.1", defineSymbol); 
 		}
 
 		using var stream = new MemoryStream(); // 4. Write output
@@ -323,13 +330,20 @@ public static class TemplateGeneratorLogic
 			}
 		}
 
+		// Add self-define (Forced Conditional Access)
+		if (!versionDefines.ContainsKey(packageName))
+		{
+			var selfDefine = AsmDefGenerationLogic.DeriveDefineSymbol(packageName.Contains('.') ? packageName.Split('.').Last() : packageName);
+			versionDefines[packageName] = ("0.0.1", selfDefine);
+		}
+
 		foreach (var refName in references)
 		{
-			var packageId = DerivePackageId(refName);
+			var packageId = AsmDefGenerationLogic.DerivePackageId(refName);
 
 			if (versionDefines.ContainsKey(packageId)) continue;
 
-			var defineSymbol = DeriveDefineSymbol(refName);
+			var defineSymbol = AsmDefGenerationLogic.DeriveDefineSymbol(refName);
 
 			versionDefines[packageId] = ("0.0.1", defineSymbol);
 		}
@@ -379,48 +393,6 @@ public static class TemplateGeneratorLogic
 		writer.Flush();
 
 		return Encoding.UTF8.GetString(stream.ToArray());
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static string DerivePackageId(string assemblyName)
-	{
-		if (AssemblyToPackageMap.TryGetValue(assemblyName, out var pkg)) return pkg; // 1. Check direct map
-
-		var lower = assemblyName.ToLowerInvariant(); // 2. Heuristic: "Unity.Something" -> "com.unity.something", 3. Heuristic: "Company.Product" -> "com.company.product"
-
-		if (assemblyName.StartsWith("Unity.", StringComparison.OrdinalIgnoreCase))
-		{
-			return "com." + lower;
-		}
-
-		// Generic fallback for non-unity assemblies: try to make it look like a package. "My.Cool.Lib" -> "com.my.cool.lib" (Common convention) or just "my.cool.lib". However, usually referencing the exact assembly name works as a resource check in modern Unity if the assembly is within a package. But keeping "com." prefix is safer for package checks. If it looks like a package (contains dots), lowercase it.
-		if (lower.Contains('.'))
-		{
-			// If it doesn't start with com/net/org, prepend com.
-			if (!lower.StartsWith("com.") && !lower.StartsWith("net.") && !lower.StartsWith("org."))
-			{
-				return "com." + lower;
-			}
-			return lower;
-		}
-
-		return lower;
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static string DeriveDefineSymbol(string assemblyName)
-	{
-		if (assemblyName.Contains(":")) return "HAS_UNKNOWN_REF"; // 1. Remove "GUID:..." if present (rare in name fields but possible in raw data)
-
-		var sb = new StringBuilder("HAS_"); // 2. Convert to snake_case upper. "Unity.Entities" -> "HAS_UNITY_ENTITIES", "MyLib" -> "HAS_MYLIB"
-
-		foreach (var c in assemblyName)
-		{
-			if (c == '.') sb.Append('_');
-			else if (char.IsLetterOrDigit(c)) sb.Append(char.ToUpperInvariant(c));
-		}
-
-		return sb.ToString();
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -492,36 +464,8 @@ public static class TemplateGeneratorLogic
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static string GetAssemblyNameFromPackage(string packageName)
 	{
-		var parts = packageName.Split('.');
-		var result = new StringBuilder();
-
-		for (int i = 1; i < parts.Length; i++)
-		{
-			var part = parts[i];
-			if (string.IsNullOrEmpty(part)) continue;
-
-			var sanitized = SanitizeToPascalCase(part);
-			if (result.Length > 0) result.Append('.');
-			result.Append(sanitized);
-		}
-
-		return result.Length > 0 ? result.ToString() : "MyNamespace";
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static string SanitizeToPascalCase(string input)
-	{
-		if (string.IsNullOrEmpty(input)) return input;
-		var parts = input.Split('-', '_');
-		var result = new StringBuilder();
-		foreach (var part in parts)
-		{
-			if (string.IsNullOrEmpty(part)) continue;
-			var sanitized = char.ToUpper(part[0], CultureInfo.InvariantCulture) +
-				(part.Length > 1 ? part.Substring(1).ToLower(CultureInfo.InvariantCulture) : "");
-			result.Append(sanitized);
-		}
-		return result.Length > 0 ? result.ToString() : input;
+		PackageLogic.GetAsmDefRoot(packageName, out var asmName);
+		return asmName;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

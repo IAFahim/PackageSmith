@@ -114,4 +114,79 @@ public static class TemplateLogic
 		}
 		""";
 	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static string GenerateDodFull(string ns, string featureName)
+	{
+		return $$"""
+		using System;
+		using System.Runtime.CompilerServices;
+		using System.Runtime.InteropServices;
+		using UnityEngine;
+
+		namespace {{ns}}
+		{
+			// LAYER A: DATA
+			[Serializable]
+			[StructLayout(LayoutKind.Sequential)]
+			public struct {{featureName}}State
+			{
+				public float Value;
+				public bool IsActive;
+
+				public override string ToString() => $"[{{featureName}}] {Value:F1} ({(IsActive ? "ON" : "OFF")})"; // Debug view
+			}
+
+			// LAYER B: LOGIC
+			public static class {{featureName}}Logic
+			{
+				[MethodImpl(MethodImplOptions.AggressiveInlining)]
+				public static void Calculate(float current, float mod, out float result)
+				{
+					result = current + mod; // Atomic operation
+				}
+			}
+
+			// LAYER C: EXTENSIONS
+			public static class {{featureName}}Extensions
+			{
+				public static bool TryModify(ref this {{featureName}}State state, float amount, out float result)
+				{
+					result = state.Value; // Default
+
+					if (!state.IsActive) return false; // Guard
+					if (amount == 0) return false; // Guard
+
+					{{featureName}}Logic.Calculate(state.Value, amount, out result); // Execute
+					state.Value = result; // Apply
+
+					return true; // Success
+				}
+			}
+
+			// LAYER D: INTERFACE & BRIDGE
+			public interface I{{featureName}}System
+			{
+				bool TryModify(float amount);
+			}
+
+			public class {{featureName}}Component : MonoBehaviour, I{{featureName}}System
+			{
+				[SerializeField] private {{featureName}}State _state;
+
+				bool I{{featureName}}System.TryModify(float amount)
+				{
+					return _state.TryModify(amount, out _); // Proxy
+				}
+
+				[ContextMenu("Debug: Test Modify")]
+				private void TestModify()
+				{
+					var success = ((I{{featureName}}System)this).TryModify(10f); // Explicit call
+					Debug.Log(success ? $"<color=cyan>OK:</color> {_state}" : "FAIL"); // Log
+				}
+			}
+		}
+		""";
+	}
 }

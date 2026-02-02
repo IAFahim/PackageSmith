@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Globalization;
+using System.Text;
 using System.Runtime.CompilerServices;
 using PackageSmith.Data.State;
 using PackageSmith.Data.Types;
@@ -60,13 +62,39 @@ public static class PackageLogic
 	public static void GetAsmDefRoot(in string packageName, out string asmdefRoot)
 	{
 		var parts = packageName.Split('.');
-		asmdefRoot = parts.Length > 0 ? parts[^1] : packageName;
+		var startIndex = (parts.Length > 0 && (parts[0] is "com" or "net" or "org" or "io")) ? 1 : 0;
+		var relevantParts = parts.Skip(startIndex);
+		
+		var sb = new StringBuilder();
+		foreach (var part in relevantParts)
+		{
+			if (sb.Length > 0) sb.Append('.');
+			sb.Append(SanitizeToPascalCase(part));
+		}
+		
+		asmdefRoot = sb.ToString();
+		if (string.IsNullOrEmpty(asmdefRoot)) asmdefRoot = SanitizeToPascalCase(packageName);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static void GenerateNamespace(in string packageName, out string ns)
 	{
-		var parts = packageName.Split('.');
-		ns = string.Join(".", parts.Skip(2).Take(parts.Length - 2));
+		GetAsmDefRoot(packageName, out ns);
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string SanitizeToPascalCase(string input)
+	{
+		if (string.IsNullOrEmpty(input)) return input;
+		var parts = input.Split('-', '_');
+		var result = new StringBuilder();
+		foreach (var part in parts)
+		{
+			if (string.IsNullOrEmpty(part)) continue;
+			var sanitized = char.ToUpper(part[0], CultureInfo.InvariantCulture) +
+				(part.Length > 1 ? part.Substring(1).ToLower(CultureInfo.InvariantCulture) : "");
+			result.Append(sanitized);
+		}
+		return result.Length > 0 ? result.ToString() : input;
 	}
 }
