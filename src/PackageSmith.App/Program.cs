@@ -50,6 +50,9 @@ static class Program
 			config.AddCommand<CiCommand>("ci")
 				.WithDescription("Manage CI/CD workflows");
 
+			config.AddCommand<HarvestCommand>("harvest")
+				.WithDescription("Harvest a local package into a template");
+
 			config.SetInterceptor(new CommandInterceptor());
 		});
 

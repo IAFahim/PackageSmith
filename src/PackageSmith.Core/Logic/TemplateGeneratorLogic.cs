@@ -196,7 +196,7 @@ public static class TemplateGeneratorLogic
 		var content = File.ReadAllText(asmdefPath);
 		var detokenized = DetokenizeString(content, packageName);
 
-		var doc = JsonDocument.Parse(detokenized);
+		using var doc = JsonDocument.Parse(detokenized);
 		var root = doc.RootElement;
 
 		var references = new List<string>(); // 1. Extract References
@@ -292,7 +292,7 @@ public static class TemplateGeneratorLogic
 		var content = File.ReadAllText(asmdefPath);
 		var detokenized = DetokenizeString(content, packageName, displayName, description, authorName, unityVersion);
 
-		var doc = JsonDocument.Parse(detokenized);
+		using var doc = JsonDocument.Parse(detokenized);
 		var root = doc.RootElement;
 
 		var references = new List<string>();

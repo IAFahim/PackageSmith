@@ -34,7 +34,7 @@ public static class TemplateHarvesterLogic
 		".csproj", ".sln", ".suo", ".user", ".userprefs", ".pidb", ".booproj", ".unityproj", ".pdb", ".db"
 	};
 
-	public static bool TryHarvest(string sourcePath, string outputTemplatePath, string sourcePackageName, out int processedFiles)
+	public static bool TryHarvest(string sourcePath, string outputTemplatePath, string sourcePackageName, out int processedFiles, bool keepMeta = false)
 	{
 		processedFiles = 0;
 		if (!Directory.Exists(sourcePath)) return false;
@@ -67,7 +67,7 @@ public static class TemplateHarvesterLogic
 		{
 			if (ShouldSkip(file, rootPath)) continue;
 
-			var action = AnalyzeFile(file);
+			var action = AnalyzeFile(file, keepMeta);
 
 			if (action == FileAction.Keep || action == FileAction.Tokenize)
 			{
@@ -210,7 +210,7 @@ public static class TemplateHarvesterLogic
 	private enum FileAction { Drop, Keep, Tokenize }
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static FileAction AnalyzeFile(string filePath)
+	private static FileAction AnalyzeFile(string filePath, bool keepMeta)
 	{
 		var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
@@ -221,7 +221,7 @@ public static class TemplateHarvesterLogic
 			".asmref" => FileAction.Keep,
 			".json" => FileAction.Tokenize,
 			".md" => FileAction.Tokenize,
-			".meta" => FileAction.Drop, // Still dropping meta for now
+			".meta" => keepMeta ? FileAction.Keep : FileAction.Drop,
 			".yml" => FileAction.Tokenize,
 			".yaml" => FileAction.Tokenize,
 			".txt" => FileAction.Tokenize,
@@ -256,7 +256,7 @@ public static class TemplateHarvesterLogic
 			if (!File.Exists(packageJsonPath)) return metadata;
 
 			var content = File.ReadAllText(packageJsonPath);
-			var doc = JsonDocument.Parse(content);
+			using var doc = JsonDocument.Parse(content);
 			var root = doc.RootElement;
 
 			if (root.TryGetProperty("name", out var nameProp))
@@ -355,22 +355,34 @@ public static class TemplateHarvesterLogic
 	{
 		try
 		{
-			// Search for asmdefs in root and first level subdirs
-			var asmdefs = Directory.GetFiles(sourcePath, "*.asmdef", SearchOption.TopDirectoryOnly);
-			if (asmdefs.Length == 0)
+			// Find ALL asmdefs
+			var asmdefs = Directory.GetFiles(sourcePath, "*.asmdef", SearchOption.AllDirectories);
+			if (asmdefs.Length == 0) return string.Empty;
+
+			var candidates = new List<string>();
+
+			foreach (var asm in asmdefs)
 			{
-				// try one level deep
-				asmdefs = Directory.GetFiles(sourcePath, "*.asmdef", SearchOption.AllDirectories);
+				try 
+				{
+					var content = File.ReadAllText(asm);
+					using var doc = JsonDocument.Parse(content);
+					if (doc.RootElement.TryGetProperty("name", out var nameProp))
+					{
+						var name = nameProp.GetString();
+						if (!string.IsNullOrEmpty(name))
+						{
+							candidates.Add(name);
+						}
+					}
+				}
+				catch {}
 			}
 
-			if (asmdefs.Length > 0)
+			// Pick the shortest name as it is likely the root (e.g. "MyLib" vs "MyLib.Tests")
+			if (candidates.Count > 0)
 			{
-				// Prefer short names or root names?
-				// Just pick the first one for now.
-				var content = File.ReadAllText(asmdefs[0]);
-				var doc = JsonDocument.Parse(content);
-				if (doc.RootElement.TryGetProperty("name", out var nameProp))
-					return nameProp.GetString() ?? string.Empty;
+				return candidates.OrderBy(x => x.Length).ThenBy(x => x).First();
 			}
 		}
 		catch { /* Ignore */ }
@@ -432,7 +444,7 @@ public static class TemplateHarvesterLogic
 	{
 		try
 		{
-			var doc = JsonDocument.Parse(json);
+			using var doc = JsonDocument.Parse(json);
 			var root = doc.RootElement;
 
 			using var stream = new MemoryStream();
