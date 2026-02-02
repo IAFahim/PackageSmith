@@ -1,87 +1,85 @@
-using System;
 using System.Text.Json;
-using PackageSmith.Data.Config;
-using PackageSmith.Data.Types;
 using PackageSmith.Core.Logic;
+using PackageSmith.Data.Config;
 
 namespace PackageSmith.Core.Extensions;
 
 public static class ConfigExtensions
 {
-	private static readonly JsonSerializerOptions JsonOptions = new()
-	{
-		WriteIndented = true,
-		PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-	};
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
-	public static bool TryLoad(this ref AppConfig config, string configPath, out bool success)
-	{
-		success = false;
+    public static bool TryLoad(this ref AppConfig config, string configPath, out bool success)
+    {
+        success = false;
 
-		FileSystemLogic.FileExists(configPath, out var exists);
-		if (!exists) return false;
+        FileSystemLogic.FileExists(configPath, out var exists);
+        if (!exists) return false;
 
-		try
-		{
-			FileSystemLogic.ReadFile(configPath, out var json);
-			var loaded = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
-			config = loaded;
+        try
+        {
+            FileSystemLogic.ReadFile(configPath, out var json);
+            var loaded = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+            config = loaded;
 
-			ConfigLogic.IsConfigValid(in config, out var isValid);
-			if (!isValid) return false;
+            ConfigLogic.IsConfigValid(in config, out var isValid);
+            if (!isValid) return false;
 
-			success = true;
-			return true;
-		}
-		catch
-		{
-			return false;
-		}
-	}
+            success = true;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
-	public static bool TrySave(this ref AppConfig config, string configPath, out bool success)
-	{
-		success = false;
+    public static bool TrySave(this ref AppConfig config, string configPath, out bool success)
+    {
+        success = false;
 
-		try
-		{
-			var toSave = config;
-			ConfigLogic.GetCurrentTimeTicks(out var ticks);
-			toSave.LastUpdatedTicks = ticks;
+        try
+        {
+            var toSave = config;
+            ConfigLogic.GetCurrentTimeTicks(out var ticks);
+            toSave.LastUpdatedTicks = ticks;
 
-			var json = JsonSerializer.Serialize(toSave, JsonOptions);
-			FileSystemLogic.WriteFile(configPath, json);
-			success = true;
-			return true;
-		}
-		catch
-		{
-			return false;
-		}
-	}
+            var json = JsonSerializer.Serialize(toSave, JsonOptions);
+            FileSystemLogic.WriteFile(configPath, json);
+            success = true;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
-	public static bool TryGetDefault(out AppConfig config)
-	{
-		ConfigLogic.GetDefaultCompany(out var company);
-		ConfigLogic.GetDefaultEmail(out var email);
-		ConfigLogic.GetDefaultUnityVersion(out var unityVersion);
-		ConfigLogic.GetCurrentTimeTicks(out var ticks);
+    public static bool TryGetDefault(out AppConfig config)
+    {
+        ConfigLogic.GetDefaultCompany(out var company);
+        ConfigLogic.GetDefaultEmail(out var email);
+        ConfigLogic.GetDefaultUnityVersion(out var unityVersion);
+        ConfigLogic.GetCurrentTimeTicks(out var ticks);
 
-		config = new AppConfig
-		{
-			CompanyName = company,
-			AuthorEmail = email,
-			Website = new string(string.Empty),
-			DefaultUnityVersion = unityVersion,
-			LastUpdatedTicks = ticks
-		};
+        config = new AppConfig
+        {
+            CompanyName = company,
+            AuthorEmail = email,
+            Website = new string(string.Empty),
+            DefaultUnityVersion = unityVersion,
+            LastUpdatedTicks = ticks
+        };
 
-		return true;
-	}
+        return true;
+    }
 
-	public static bool TryValidate(this ref AppConfig config, out bool isValid)
-	{
-		ConfigLogic.IsConfigValid(in config, out isValid);
-		return isValid;
-	}
+    public static bool TryValidate(this ref AppConfig config, out bool isValid)
+    {
+        ConfigLogic.IsConfigValid(in config, out isValid);
+        return isValid;
+    }
 }

@@ -8,10 +8,13 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct DependencyState
 {
-	public string Name;
-	public string Version;
-	public DependencyType Type;
-	public string Url;
+    public string Name;
+    public string Version;
+    public DependencyType Type;
+    public string Url;
 
-	public override readonly string ToString() => $"[Dep] {Name} {Version}";
+    public readonly override string ToString()
+    {
+        return $"[Dep] {Name} {Version}";
+    }
 }

@@ -7,10 +7,13 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct PackageCapabilityState
 {
-	public bool HasPlayModeTests;
-	public bool HasEditModeTests;
-	public bool HasNativePlugins;
-	public bool HasWebGL;
+    public bool HasPlayModeTests;
+    public bool HasEditModeTests;
+    public bool HasNativePlugins;
+    public bool HasWebGL;
 
-	public override readonly string ToString() => $"(Caps) Play:{HasPlayModeTests} Edit:{HasEditModeTests} Native:{HasNativePlugins}";
+    public readonly override string ToString()
+    {
+        return $"(Caps) Play:{HasPlayModeTests} Edit:{HasEditModeTests} Native:{HasNativePlugins}";
+    }
 }

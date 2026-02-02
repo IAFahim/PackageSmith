@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -8,75 +7,72 @@ namespace PackageSmith.Core.Logic;
 
 public static class UnityLinkLogic
 {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static bool TryFindUnityProject(string startPath, out string projectPath)
-	{
-		projectPath = string.Empty;
-		var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryFindUnityProject(string startPath, out string projectPath)
+    {
+        projectPath = string.Empty;
+        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
 
-		while (current != null)
-		{
-			var assets = Path.Combine(current.FullName, "Assets");
-			var packages = Path.Combine(current.FullName, "Packages");
-			var projectSettings = Path.Combine(current.FullName, "ProjectSettings");
+        while (current != null)
+        {
+            var assets = Path.Combine(current.FullName, "Assets");
+            var packages = Path.Combine(current.FullName, "Packages");
+            var projectSettings = Path.Combine(current.FullName, "ProjectSettings");
 
-			if (Directory.Exists(assets) && Directory.Exists(packages) && Directory.Exists(projectSettings))
-			{
-				projectPath = current.FullName;
-				return true;
-			}
+            if (Directory.Exists(assets) && Directory.Exists(packages) && Directory.Exists(projectSettings))
+            {
+                projectPath = current.FullName;
+                return true;
+            }
 
-			current = current.Parent;
-		}
+            current = current.Parent;
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static bool TryLinkToUnityProject(string unityProjectPath, string packagePath, string packageName)
-	{
-		var manifestPath = Path.Combine(unityProjectPath, "Packages", "manifest.json");
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool TryLinkToUnityProject(string unityProjectPath, string packagePath, string packageName)
+    {
+        var manifestPath = Path.Combine(unityProjectPath, "Packages", "manifest.json");
 
-		if (!File.Exists(manifestPath)) return false;
+        if (!File.Exists(manifestPath)) return false;
 
-		try
-		{
-			var json = File.ReadAllText(manifestPath);
-			var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip };
-			var doc = JsonDocument.Parse(json, options);
-			var root = doc.RootElement;
+        try
+        {
+            var json = File.ReadAllText(manifestPath);
+            var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip };
+            var doc = JsonDocument.Parse(json, options);
+            var root = doc.RootElement;
 
-			var dependencies = new Dictionary<string, string>();
+            var dependencies = new Dictionary<string, string>();
 
-			if (root.TryGetProperty("dependencies", out var depsProp))
-			{
-				foreach (var dep in depsProp.EnumerateObject())
-				{
-					dependencies[dep.Name] = dep.Value.GetString() ?? string.Empty;
-				}
-			}
+            if (root.TryGetProperty("dependencies", out var depsProp))
+                foreach (var dep in depsProp.EnumerateObject())
+                    dependencies[dep.Name] = dep.Value.GetString() ?? string.Empty;
 
-			var packagesDir = Path.Combine(unityProjectPath, "Packages"); // Calculate relative path from Packages to package
-			var relativePath = Path.GetRelativePath(packagesDir, packagePath).Replace("\\", "/");
+            var packagesDir = Path.Combine(unityProjectPath, "Packages");
+            var relativePath = Path.GetRelativePath(packagesDir, packagePath).Replace("\\", "/");
 
-			dependencies[packageName] = $"file:{relativePath}"; // Add or update the local package reference
+            dependencies[packageName] = $"file:{relativePath}";
 
-			var newJson = $"{{\n  \"dependencies\": {{"; // Rebuild manifest JSON
-			var first = true;
-			foreach (var (name, version) in dependencies)
-			{
-				if (!first) newJson += ",";
-				newJson += $"\n    \"{name}\": \"{version}\"";
-				first = false;
-			}
-			newJson += "\n  }\n}\n";
+            var newJson = "{\n  \"dependencies\": {";
+            var first = true;
+            foreach (var (name, version) in dependencies)
+            {
+                if (!first) newJson += ",";
+                newJson += $"\n    \"{name}\": \"{version}\"";
+                first = false;
+            }
 
-			File.WriteAllText(manifestPath, newJson);
-			return true;
-		}
-		catch
-		{
-			return false;
-		}
-	}
+            newJson += "\n  }\n}\n";
+
+            File.WriteAllText(manifestPath, newJson);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

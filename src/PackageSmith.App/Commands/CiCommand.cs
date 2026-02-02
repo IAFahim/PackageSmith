@@ -1,69 +1,66 @@
-using System;
 using System.IO;
 using System.Linq;
+using PackageSmith.Core.Extensions;
+using PackageSmith.Core.Logic;
+using PackageSmith.Data.State;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using PackageSmith.Core.Logic;
-using PackageSmith.Core.Extensions;
-using PackageSmith.Data.State;
 
 namespace PackageSmith.App.Commands;
 
 public sealed class CiCommand : Command<CiCommand.Settings>
 {
-	public sealed class Settings : CommandSettings
-	{
-		[CommandArgument(0, "[action]")]
-		public string? Action { get; init; }
+    public override int Execute(CommandContext context, Settings settings)
+    {
+        var action = settings.Action ?? "generate";
+        var outputPath = settings.OutputPath ?? ".";
 
-		[CommandOption("-o|--output")]
-		public string? OutputPath { get; init; }
-	}
+        if (action.ToLowerInvariant() != "generate") return 1;
 
-	public override int Execute(CommandContext context, Settings settings)
-	{
-		var action = settings.Action ?? "generate";
-		var outputPath = settings.OutputPath ?? ".";
+        AnsiConsole.MarkupLine("[dim]Analyzing package structure...[/]");
 
-		if (action.ToLowerInvariant() != "generate") return 1;
+        if (!Directory.Exists(outputPath))
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] Path {outputPath} does not exist.");
+            return 1;
+        }
 
-		AnsiConsole.MarkupLine("[dim]Analyzing package structure...[/]");
+        var realFiles = Directory.GetFiles(outputPath, "*", SearchOption.AllDirectories);
+        var virtualFiles = realFiles.Select(f => new VirtualFileState
+        {
+            Path = Path.GetRelativePath(outputPath, f)
+        }).ToArray();
 
-		if (!Directory.Exists(outputPath))
-		{
-			AnsiConsole.MarkupLine($"[red]Error:[/] Path {outputPath} does not exist.");
-			return 1;
-		}
+        var layout = new PackageLayoutState { FileCount = virtualFiles.Length };
+        AnalyzerLogic.AnalyzeLayout(in layout, virtualFiles, out var caps);
 
-		var realFiles = Directory.GetFiles(outputPath, "*", SearchOption.AllDirectories);
-		var virtualFiles = realFiles.Select(f => new VirtualFileState
-		{
-			Path = Path.GetRelativePath(outputPath, f)
-		}).ToArray();
+        AnsiConsole.MarkupLine($"[dim]Detected capabilities:[/] {caps}");
 
-		var layout = new PackageLayoutState { FileCount = virtualFiles.Length };
-		AnalyzerLogic.AnalyzeLayout(in layout, virtualFiles, out var caps);
+        if (caps.TryGenerateWorkflow(out var yaml))
+        {
+            var workflowsDir = Path.Combine(outputPath, ".github", "workflows");
+            Directory.CreateDirectory(workflowsDir);
 
-		AnsiConsole.MarkupLine($"[dim]Detected capabilities:[/] {caps}");
+            var path = Path.Combine(workflowsDir, "test.yml");
+            File.WriteAllText(path, yaml);
 
-		if (caps.TryGenerateWorkflow(out var yaml))
-		{
-			var workflowsDir = Path.Combine(outputPath, ".github", "workflows");
-			Directory.CreateDirectory(workflowsDir);
+            AnsiConsole.MarkupLine($"[green]Success:[/] Generated smart workflow at {path}");
+            if (caps.HasPlayModeTests) AnsiConsole.MarkupLine("  • [cyan]PlayMode[/] enabled");
+            if (caps.HasEditModeTests) AnsiConsole.MarkupLine("  • [cyan]EditMode[/] enabled");
+            if (caps.HasNativePlugins) AnsiConsole.MarkupLine("  • [yellow]Native Plugins[/] detected");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[yellow]Warning:[/] Could not generate workflow.");
+        }
 
-			var path = Path.Combine(workflowsDir, "test.yml");
-			File.WriteAllText(path, yaml);
+        return 0;
+    }
 
-			AnsiConsole.MarkupLine($"[green]Success:[/] Generated smart workflow at {path}");
-			if (caps.HasPlayModeTests) AnsiConsole.MarkupLine("  • [cyan]PlayMode[/] enabled");
-			if (caps.HasEditModeTests) AnsiConsole.MarkupLine("  • [cyan]EditMode[/] enabled");
-			if (caps.HasNativePlugins) AnsiConsole.MarkupLine("  • [yellow]Native Plugins[/] detected");
-		}
-		else
-		{
-			AnsiConsole.MarkupLine("[yellow]Warning:[/] Could not generate workflow.");
-		}
+    public sealed class Settings : CommandSettings
+    {
+        [CommandArgument(0, "[action]")] public string? Action { get; init; }
 
-		return 0;
-	}
+        [CommandOption("-o|--output")] public string? OutputPath { get; init; }
+    }
 }

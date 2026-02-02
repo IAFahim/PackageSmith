@@ -8,9 +8,12 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct SubAssemblyState
 {
-	public string Name;
-	public SubAssemblyType Type;
-	public int DependencyCount;
+    public string Name;
+    public SubAssemblyType Type;
+    public int DependencyCount;
 
-	public readonly override string ToString() => $"[SubAsm] {Name} ({Type})";
+    public readonly override string ToString()
+    {
+        return $"[SubAsm] {Name} ({Type})";
+    }
 }

@@ -5,13 +5,13 @@ namespace PackageSmith.App.Bridges;
 
 public interface IConfigBridge
 {
-	bool TryLoad(out AppConfig config);
-	bool TrySave(in AppConfig config);
-	bool TryDelete();
-	AppConfig GetDefault();
+    bool TryLoad(out AppConfig config);
+    bool TrySave(in AppConfig config);
+    bool TryDelete();
+    AppConfig GetDefault();
 }
 
 public interface IPackageBridge
 {
-	bool TryCreate(in PackageState package);
+    bool TryCreate(in PackageState package);
 }

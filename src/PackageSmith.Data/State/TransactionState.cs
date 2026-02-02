@@ -7,11 +7,14 @@ namespace PackageSmith.Data.State;
 [StructLayout(LayoutKind.Sequential)]
 public struct TransactionState
 {
-	public Guid Id;
-	public string TargetPath;
-	public string TempPath;
-	public bool IsCommitted;
-	public long Timestamp;
+    public Guid Id;
+    public string TargetPath;
+    public string TempPath;
+    public bool IsCommitted;
+    public long Timestamp;
 
-	public override readonly string ToString() => $"[Tx] {Id} -> {TempPath} ({(IsCommitted ? "COMMITTED" : "PENDING")})";
+    public readonly override string ToString()
+    {
+        return $"[Tx] {Id} -> {TempPath} ({(IsCommitted ? "COMMITTED" : "PENDING")})";
+    }
 }
