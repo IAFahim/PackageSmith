@@ -13,6 +13,13 @@ static class Program
 {
 	static int Main(string[] args)
 	{
+		if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v"))
+		{
+			var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+			AnsiConsole.MarkupLine($"[bold cyan]PackageSmith[/] v{version}");
+			return 0;
+		}
+
 		if (args.Length == 0)
 		{
 			ShowBanner();

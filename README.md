@@ -23,14 +23,14 @@ PackageSmith is a CLI tool that generates Unity package scaffolding with proper 
 
 **Mac / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/IAFahim/PackageSmith/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/IAFahim/PackageSmith/master/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
 # Run in a regular PowerShell window:
 Set-ExecutionPolicy Bypass -Scope Process -Force
-iwr -useb https://raw.githubusercontent.com/IAFahim/PackageSmith/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/IAFahim/PackageSmith/master/install.ps1 | iex
 ```
 
 > **Windows Note:** The installer automatically creates a `.pksmith` shim in your User Profile and adds it to your PATH. You may need to restart your terminal after the first installation.

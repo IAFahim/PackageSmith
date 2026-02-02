@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using PackageSmith.App.Bridges;
@@ -31,20 +32,46 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 
 	public override int Execute(CommandContext context, Settings settings)
 	{
-		if (!string.IsNullOrEmpty(settings.TemplateName)) // If template is specified, use template generator
+		string? selectedTemplate = settings.TemplateName;
+
+		// 1. If template not specified via flag, ask user interactively
+		if (string.IsNullOrEmpty(selectedTemplate))
 		{
-			return CreateFromTemplate(settings);
+			var templates = GetAvailableTemplates();
+			
+			// If we have templates, give the user a choice
+			if (templates.Count > 0)
+			{
+				var choices = new List<string> { "Standard (Empty)" };
+				choices.AddRange(templates);
+
+				var selection = AnsiConsole.Prompt(
+					new SelectionPrompt<string>()
+						.Title("[bold]Select a template:[/]")
+						.PageSize(10)
+						.AddChoices(choices));
+
+				if (selection != "Standard (Empty)")
+				{
+					selectedTemplate = selection;
+				}
+			}
 		}
 
-		return CreateStandard(settings); // Otherwise use standard package creation
+		// 2. Route based on selection
+		if (!string.IsNullOrEmpty(selectedTemplate))
+		{
+			return CreateFromTemplate(settings, selectedTemplate);
+		}
+
+		return CreateStandard(settings);
 	}
 
-	private int CreateFromTemplate(Settings settings)
+	private int CreateFromTemplate(Settings settings, string templateName)
 	{
-		AnsiConsole.MarkupLine("[dim]Creating package from template...[/]\n");
+		AnsiConsole.MarkupLine($"[dim]Using template: [cyan]{templateName}[/][/]\n");
 
 		var packageName = settings.PackageName ?? AnsiConsole.Ask<string>("[dim]Package name[/] (e.g. [cyan]com.studio.tool[/]):");
-		var templateName = settings.TemplateName!;
 		var outputPath = settings.OutputPath ?? ".";
 
 		// Get git config for defaults
@@ -105,6 +132,22 @@ public sealed class NewCommand : Command<NewCommand.Settings>
 		}
 
 		return 0;
+	}
+
+	private List<string> GetAvailableTemplates()
+	{
+		var results = new List<string>();
+		var templatesDir = GetAppDataPath();
+		var templatesPath = Path.Combine(templatesDir, "PackageSmith", "Templates");
+
+		if (Directory.Exists(templatesPath))
+		{
+			foreach (var t in Directory.GetDirectories(templatesPath))
+			{
+				results.Add(Path.GetFileName(t));
+			}
+		}
+		return results;
 	}
 
 	private int CreateStandard(Settings settings)
