@@ -75,7 +75,9 @@ function Install-Shim {
     $binDir = Join-Path $PSScriptRoot "src\PackageSmith.App\bin\Release\net9.0"
     $exePath = Join-Path $binDir "PackageSmith.App.exe"
     $destDir = Join-Path $shimDir "bin"
-    $destExe = Join-Path $destDir "pksmith.exe"
+    
+    # Keep the original executable name so .deps.json and .runtimeconfig.json are found automatically
+    $destExe = Join-Path $destDir "PackageSmith.App.exe"
     $shimPath = Join-Path $shimDir "pksmith.cmd"
 
     if (-not (Test-Path $exePath)) {
@@ -84,7 +86,9 @@ function Install-Shim {
     }
 
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-    Copy-Item $exePath $destExe -Force
+    
+    # Copy ALL files (DLLs, JSONs, EXE) to ensure the app works
+    Copy-Item -Path "$binDir\*" -Destination $destDir -Recurse -Force
 
     $shimContent = @"
 @echo off
