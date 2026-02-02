@@ -19,24 +19,23 @@ PackageSmith is a CLI tool that generates Unity package scaffolding with proper 
 
 ## Installation
 
-### Prerequisites
+### ⚡️ Quick Install
 
-- .NET SDK 9.0 or higher
-- Linux, macOS, or Windows
-
-### Quick Install
-
+**Mac / Linux:**
 ```bash
-# Clone the repository
-git clone https://github.com/IAFahim/PackageSmith.git
-cd PackageSmith
-
-# Run the installer
-./install.sh        # Linux/macOS
-.\install.ps1       # Windows
+curl -fsSL https://raw.githubusercontent.com/IAFahim/PackageSmith/main/install.sh | bash
 ```
 
-### Manual Install
+**Windows (PowerShell):**
+```powershell
+# Run in a regular PowerShell window:
+Set-ExecutionPolicy Bypass -Scope Process -Force
+iwr -useb https://raw.githubusercontent.com/IAFahim/PackageSmith/main/install.ps1 | iex
+```
+
+> **Windows Note:** The installer automatically creates a `.pksmith` shim in your User Profile and adds it to your PATH. You may need to restart your terminal after the first installation.
+
+### Manual Installation
 
 ```bash
 # Build
